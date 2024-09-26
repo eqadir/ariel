@@ -44,6 +44,9 @@ def generate_utterances(cloud_event: Dict[str, Any]):
     data["input_video"] = input_video_local_path
     data["output_directory"] = "/tmp/output"
 
+    languages = data['target_languages']
+    data['target_language'] = languages[0]
+
     dubber = Dubber(**data)
 
     utterances = dubber.generate_utterance_metadata()
