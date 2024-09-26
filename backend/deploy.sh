@@ -1,7 +1,7 @@
 #!/bin/bash
 GCP_PROJECT_ID=$(gcloud config get project)
-export GCS_BUCKET=$GCP_PROJECT_ID-ariel
-export GCP_REGION=europe-west3
+export GCS_BUCKET=$GCP_PROJECT_ID-ariel-us
+export GCP_REGION=us-central1
 
 gcloud config set project $GCP_PROJECT_ID
 gcloud services enable cloudresourcemanager.googleapis.com
@@ -74,19 +74,26 @@ gcloud --no-user-output-enabled projects add-iam-policy-binding \
 printf "Operation finished successfully!\n"
 printf "\nINFO - Deploying the 'ariel-generate-utterances' Cloud Function...\n"
 
-gcloud functions deploy ariel-generate-utterances \
-  --gen2 \
-  --region=$GCP_REGION \
-  --runtime=python312 \
-  --source=. \
-  --memory=8Gi \
-  --cpu=2 \
-  --gpu=1 \
-  --timeout=120s \
-  --entry-point=generate_utterances \
-  --trigger-event-filters="type=google.cloud.storage.object.v1.finalized" \
-  --trigger-event-filters="bucket=$GCS_BUCKET" \
-  --trigger-location="$GCP_REGION"
+# gcloud beta run deploy ariel-generate-utterances \
+#   --region=$GCP_REGION \
+#   --function=generate_utterances \
+#   --no-allow-unauthenticated \
+#   --source=. \
+#   --base-image=google-22-full/python312 \
+#   --memory=16Gi \
+#   --cpu=4 \
+#   --gpu=1 \
+#   --gpu-type=nvidia-l4 \
+#   --max-instances=1 \
+#   --timeout=120s
+
+gcloud eventarc triggers create ariel-generate-utterances-trigger \
+  --destination-run-service=ariel-generate-utterances \
+  --destination-run-region=$GCP_REGION \
+  --event-filters="type=google.cloud.storage.object.v1.finalized" \
+  --event-filters="bucket=$GCS_BUCKET" \
+  --location="$GCP_REGION" \
+  --service-account="$COMPUTE_SERVICE_ACCOUNT"
 
 
 test $? -eq 0 || exit

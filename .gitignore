@@ -171,3 +171,7 @@ cython_debug/
 
 # System files
 .DS_Store
+
+
+#backend testing
+backend/config.json
