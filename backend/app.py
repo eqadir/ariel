@@ -16,10 +16,10 @@ log_client = cloudlogging.Client()
 log_client.setup_logging()
 
 CONFIG_FILE_NAME = "config.json"
-APPROVED_UTTERANCE_FILE_POSTFIX = "_approved.json"
+UTTERANCE_FILE_NAME = "utterances.json"
+APPROVED_UTTERANCE_FILE_NAME = "utterances_approved.json"
 
 app = Flask(__name__)
-
 
 @app.route("/", methods=["POST"])
 def process():
@@ -31,19 +31,19 @@ def process():
 
 
 def process_event(bucket, trigger_file_path):
-    trigger_directory = trigger_file_path.rpartition("/")[0]
-    trigger_file_name = trigger_file_path.rpartition("/")[2]
     if torch.cuda.is_available():
-      logging.info("GPU available, using cuda")
-    processor = GcpDubbingProcessor(bucket, trigger_directory)
+        logging.info("GPU available, using cuda")
     try:
+        trigger_directory = trigger_file_path.rpartition("/")[0]
+        trigger_file_name = trigger_file_path.rpartition("/")[2]
+        processor = GcpDubbingProcessor(bucket, trigger_directory)
         logging.info(f"Bucket: {bucket}, Name: {trigger_file_path}")
         if trigger_file_name == CONFIG_FILE_NAME:
             logging.info(f"Processing {trigger_file_path}")
             processor.generate_utterances()
-        elif trigger_file_name.endswith(APPROVED_UTTERANCE_FILE_POSTFIX):
+        elif trigger_file_name == APPROVED_UTTERANCE_FILE_NAME:
             logging.info(f"Processing {trigger_file_path}")
-            processor.dub_ad(trigger_file_name)
+            processor.dub_ad()
         else:
             logging.info(f"Ignoring {trigger_file_path}")
             return
@@ -70,26 +70,25 @@ class GcpDubbingProcessor:
         os.makedirs(self.local_output_path, exist_ok=True)
         self.attach_file_logger()
 
-        self.dubber_params, self.languages = self.read_dubber_params_from_gcs()
+        self.dubber_params = self.read_dubber_params_from_gcs()
         logging.info(f'Dubber initial parameters: {self.dubber_params}')
         self.dubber = Dubber(**self.dubber_params)
 
     def generate_utterances(self):
         self.download_input_video_from_gcs()
-        utterances = self.generate_utterances_for_all_languages()
+        utterances = self.dubber.generate_utterance_metadata()
         self.upload_utterances_to_gcs(utterances)
         # save_utterances_to_local(utterances)
         self.upload_media_files_to_gcs()
 
-    def dub_ad(self, utterances_file_name):
-        language = utterances_file_name.replace(
-            APPROVED_UTTERANCE_FILE_POSTFIX, "").replace("utterances_", "")
-        logging.info(f"Processing {self.gcs_path}/{utterances_file_name}")
+    def dub_ad(self):
+
+        logging.info(
+            f"Processing {self.gcs_path}/{APPROVED_UTTERANCE_FILE_NAME}")
 
         self.download_input_video_from_gcs()
         self.download_workdir_files_from_gcs_to_local()
 
-        self.dubber.target_language = language
         self.dubber.preprocesing_output = PreprocessingArtifacts(
             video_file=f'{self.local_output_path}/input_video.mp4',
             audio_file=f'{self.local_output_path}/input_audio.mp3',
@@ -100,7 +99,7 @@ class GcpDubbingProcessor:
         )
 
         utterances_blob = self.bucket.blob(
-            f"{self.gcs_path}/{utterances_file_name}")
+            f"{self.gcs_path}/{APPROVED_UTTERANCE_FILE_NAME}")
         utterance_data = json.loads(
             utterances_blob.download_as_string(client=None))
 
@@ -125,10 +124,7 @@ class GcpDubbingProcessor:
 
         input_video_local_path = f"{self.local_path}/input.mp4"
         dubber_params["input_file"] = input_video_local_path
-
         dubber_params["output_directory"] = self.local_output_path
-        languages = dubber_params.pop('target_languages', '').split(",")
-        dubber_params['target_language'] = languages[0]
 
         dubber_params['temperature'] = dubber_params.pop(
             'gemini_temperature', 1.0)
@@ -138,7 +134,7 @@ class GcpDubbingProcessor:
             'gemini_max_output_tokens', 8192)
         dubber_params['with_verification'] = False
         dubber_params['clean_up'] = False
-        return dubber_params, languages
+        return dubber_params
 
     def upload_media_files_to_gcs(self):
         logging.info("Uploading working directory media files to GCS")
@@ -164,7 +160,7 @@ class GcpDubbingProcessor:
 
     def attach_file_logger(self):
         logger = logging.getLogger()
-        fh = logging.FileHandler(f'{self.local_output_path}/ariel.log')
+        fh = logging.FileHandler(f'{self.local_output_path}/ariel-{os.getpid()}.log')
         fh.setLevel(logging.DEBUG)
         logger.addHandler(fh)
 
@@ -178,27 +174,11 @@ class GcpDubbingProcessor:
 
     def upload_utterances_to_gcs(self, utterances):
         logging.info("Utterances generated, writing files to GCS")
-        for language in utterances.keys():
-            utterances_json = json.dumps(utterances[language])
-            logging.info(f"Utterances in {language}: {utterances_json}")
-            utterances_gcs_path = f"{self.gcs_path}/utterances_{language}.json"
-            storage_client.get_bucket(self.bucket).blob(utterances_gcs_path).upload_from_string(
-                utterances_json, client=None)
-
-    def save_utterances_to_local(self, utterances):
-        logging.info("TEST: writing utterances to local files")
-        for language in utterances.keys():
-            with open(f"/tmp/output/utterances_{language}.json", "w") as f:
-                json.dump(utterances[language], f)
-
-    def generate_utterances_for_all_languages(self):
-        utterances = dict()
-        for target_language in self.languages:
-            logging.info(f"Generating utterances in language {
-                         target_language}")
-            self.dubber.target_language = target_language
-            utterances[target_language] = self.dubber.generate_utterance_metadata()
-        return utterances
+        utterances_json = json.dumps(utterances)
+        logging.info(f"Utterances: {utterances_json}")
+        utterances_gcs_path = f"{self.gcs_path}/{UTTERANCE_FILE_NAME}"
+        storage_client.get_bucket(self.bucket).blob(utterances_gcs_path).upload_from_string(
+            utterances_json, client=None)
 
     def upload_logfile_to_gcs(self):
         logging.info("Uploading log file to GCS")
