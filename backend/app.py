@@ -3,6 +3,7 @@ from cloudevents.http import from_http
 import os
 import logging
 from google.cloud import logging as cloudlogging
+from google.cloud import pubsub_v1
 import json
 import google.cloud.storage
 import torch
@@ -10,29 +11,56 @@ import glob
 import traceback
 from ariel.dubbing import Dubber, PreprocessingArtifacts
 
-logging.basicConfig()
+# logging.basicConfig()
 storage_client = google.cloud.storage.Client()
 log_client = cloudlogging.Client()
 log_client.setup_logging()
+if torch.cuda.is_available():
+    logging.info("GPU available, using cuda")
 
 CONFIG_FILE_NAME = "config.json"
 UTTERANCE_FILE_NAME = "utterances.json"
 APPROVED_UTTERANCE_FILE_NAME = "utterances_approved.json"
 
+TOPIC_NAME = "ariel-topic"
+
 app = Flask(__name__)
 
 @app.route("/", methods=["POST"])
 def process():
+    #if we receive storage.finalized event, filter to only on two expected file types and push a message to pubsub
     event = from_http(request.headers, request.get_data())
-    bucket = event.data['bucket']
-    trigger_file_path = event.data['name']
-    process_event(bucket, trigger_file_path)
+    if event['type'] == "google.cloud.storage.object.v1.finalized":
+      path = event.data['name']
+      bucket = event.data['bucket']
+      logging.info(f"Received creation event for {path}")
+      if should_process_file(path):
+          push_message_to_pubsub(bucket,path)
+      else:
+          logging.info(f"Ignoring creation of {bucket}/{path}")
+    elif event["type"] == "google.cloud.pubsub.topic.v1.messagePublished":
+        #if we get a pubsub message, we process it
+        logging.info(f"Processing message about file {bucket}/{path}")
+        bucket = event.data["bucket"]
+        path = event.data["path"]
+        process_event(bucket, path)
+    else:
+        logging.info(f"Ignoring event of type {event['type']}")
     return "", 204
 
+def should_process_file(path: str):
+    return path.endswith("config.json") or path.endswith("_approved.json")
+
+def push_message_to_pubsub(bucket, path):
+  publisher = pubsub_v1.PublisherClient()
+  topic_path = publisher.topic_path(os.environ['GCP_PROJECT'], TOPIC_NAME)
+  data_str = json.dumps({"bucket":bucket,"path":path})
+  # Data must be a bytestring
+  data = data_str.encode("utf-8")
+  future = publisher.publish(topic_path, data)
+  logging.info(f"Published {future.result()}")
 
 def process_event(bucket, trigger_file_path):
-    if torch.cuda.is_available():
-        logging.info("GPU available, using cuda")
     try:
         trigger_directory = trigger_file_path.rpartition("/")[0]
         trigger_file_name = trigger_file_path.rpartition("/")[2]
@@ -48,7 +76,6 @@ def process_event(bucket, trigger_file_path):
             logging.info(f"Ignoring {trigger_file_path}")
             return
         logging.info("Done")
-        processor.upload_logfile_to_gcs()
     except Exception as e:
         logging.info("Error in generate_utterances")
         logging.error(traceback.format_exc())
@@ -68,7 +95,6 @@ class GcpDubbingProcessor:
 
         self.local_output_path = f"{self.local_path}/output"
         os.makedirs(self.local_output_path, exist_ok=True)
-        self.attach_file_logger()
 
         self.dubber_params = self.read_dubber_params_from_gcs()
         logging.info(f'Dubber initial parameters: {self.dubber_params}')
@@ -78,7 +104,6 @@ class GcpDubbingProcessor:
         self.download_input_video_from_gcs()
         utterances = self.dubber.generate_utterance_metadata()
         self.upload_utterances_to_gcs(utterances)
-        # save_utterances_to_local(utterances)
         self.upload_media_files_to_gcs()
 
     def dub_ad(self):
@@ -158,11 +183,6 @@ class GcpDubbingProcessor:
             blob.download_to_filename(
                 f'{self.local_output_path}/{local_filename}')
 
-    def attach_file_logger(self):
-        logger = logging.getLogger()
-        fh = logging.FileHandler(f'{self.local_output_path}/ariel-{os.getpid()}.log')
-        fh.setLevel(logging.DEBUG)
-        logger.addHandler(fh)
 
     def upload_dubbed_ad_to_gcs(self, local_output_file_path: str):
         filename = local_output_file_path.replace(
@@ -179,13 +199,6 @@ class GcpDubbingProcessor:
         utterances_gcs_path = f"{self.gcs_path}/{UTTERANCE_FILE_NAME}"
         storage_client.get_bucket(self.bucket).blob(utterances_gcs_path).upload_from_string(
             utterances_json, client=None)
-
-    def upload_logfile_to_gcs(self):
-        logging.info("Uploading log file to GCS")
-        logfile_gcs_path = f'{self.gcs_path}/ariel.log'
-        self.bucket.blob(logfile_gcs_path).upload_from_filename(
-            f'{self.local_output_path}/ariel.log', client=None)
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
