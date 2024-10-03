@@ -72,26 +72,24 @@ gcloud --no-user-output-enabled projects add-iam-policy-binding \
     --member="serviceAccount:${VERTEXAI_SERVICE_ACCOUNT}" \
     --role="roles/storage.objectViewer"
 printf "Operation finished successfully!\n"
-printf "\nINFO - Deploying the 'ariel-generate-utterances' Cloud Function...\n"
+printf "\nINFO - Deploying the 'ariel-process' Cloud Run container...\n"
 
-# gcloud beta run deploy ariel-generate-utterances \
-#   --region=$GCP_REGION \
-#   --function=generate_utterances \
-#   --no-allow-unauthenticated \
-#   --source=. \
-#   --base-image=google-22-full/python312 \
-#   --memory=16Gi \
-#   --cpu=4 \
-#   --gpu=1 \
-#   --gpu-type=nvidia-l4 \
-#   --max-instances=1 \
-#   --timeout=120s
+gcloud beta run deploy ariel-process \
+  --region=$GCP_REGION \
+  --no-allow-unauthenticated \
+  --source=. \
+  --memory=32Gi \
+  --cpu=8 \
+  --gpu=1 \
+  --gpu-type=nvidia-l4 \
+  --max-instances=1 \
+  --timeout=600s
 
-gcloud eventarc triggers create ariel-generate-utterances-trigger \
-  --destination-run-service=ariel-generate-utterances \
+gcloud eventarc triggers create ariel-process-trigger \
+  --destination-run-service=ariel-process \
   --destination-run-region=$GCP_REGION \
-  --event-filters="type=google.cloud.storage.object.v1.finalized" \
   --event-filters="bucket=$GCS_BUCKET" \
+  --event-filters="type=google.cloud.storage.object.v1.finalized" \
   --location="$GCP_REGION" \
   --service-account="$COMPUTE_SERVICE_ACCOUNT"
 
