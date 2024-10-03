@@ -5,7 +5,7 @@
   "advertiser_name": "Trading 212",
   "number_of_speakers": 2,
   "original_language": "en-US",
-  "target_languages": "pl-PL",
+  "target_language": "pl-PL",
   "diarization_instructions": "",
   "translation_instructions": "",
   "elevenlabs_clone_voices": false,
