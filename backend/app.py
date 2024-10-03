@@ -9,6 +9,7 @@ import google.cloud.storage
 import torch
 import glob
 import traceback
+import base64
 from ariel.dubbing import Dubber, PreprocessingArtifacts
 
 # logging.basicConfig()
@@ -16,7 +17,7 @@ storage_client = google.cloud.storage.Client()
 log_client = cloudlogging.Client()
 log_client.setup_logging()
 if torch.cuda.is_available():
-    logging.info("GPU available, using cuda")
+	logging.info("GPU available, using cuda")
 
 CONFIG_FILE_NAME = "config.json"
 UTTERANCE_FILE_NAME = "utterances.json"
@@ -28,177 +29,183 @@ app = Flask(__name__)
 
 @app.route("/", methods=["POST"])
 def process():
-    #if we receive storage.finalized event, filter to only on two expected file types and push a message to pubsub
-    event = from_http(request.headers, request.get_data())
-    if event['type'] == "google.cloud.storage.object.v1.finalized":
-      path = event.data['name']
-      bucket = event.data['bucket']
-      logging.info(f"Received creation event for {path}")
-      if should_process_file(path):
-          push_message_to_pubsub(bucket,path)
-      else:
-          logging.info(f"Ignoring creation of {bucket}/{path}")
-    elif event["type"] == "google.cloud.pubsub.topic.v1.messagePublished":
-        #if we get a pubsub message, we process it
-        logging.info(f"Processing message about file {bucket}/{path}")
-        bucket = event.data["bucket"]
-        path = event.data["path"]
-        process_event(bucket, path)
-    else:
-        logging.info(f"Ignoring event of type {event['type']}")
-    return "", 204
+	envelope = request.get_json()
+	if "message" in envelope and "data" in envelope["message"]:
+		#pubsub message
+		message_str = base64.b64decode(envelope["message"]["data"]).decode("utf-8").strip()
+		message = json.loads(message_str)
+		bucket = message["bucket"]
+		path = message["path"]
+		logging.info(f"Processing message about file {bucket}/{path}")
+		process_event(bucket, path)
+		return "Processed", 204
+	else:
+		event = from_http(request.headers, request.get_data())
+		if event['type'] == "google.cloud.storage.object.v1.finalized":
+			path = event.data['name']
+			bucket = event.data['bucket']
+			logging.info(f"Received creation event for {path}")
+			if should_process_file(path):
+				push_message_to_pubsub(bucket,path)
+				return "Message published", 204
+			else:
+				logging.info(f"Ignoring file {bucket}/{path}")
+				return "Ignored file", 204
+
+	return "Incompatible event type received", 400
+
 
 def should_process_file(path: str):
-    return path.endswith("config.json") or path.endswith("_approved.json")
+	return path.endswith("config.json") or path.endswith("_approved.json")
 
 def push_message_to_pubsub(bucket, path):
-  publisher = pubsub_v1.PublisherClient()
-  topic_path = publisher.topic_path(os.environ['GCP_PROJECT'], TOPIC_NAME)
-  data_str = json.dumps({"bucket":bucket,"path":path})
-  # Data must be a bytestring
-  data = data_str.encode("utf-8")
-  future = publisher.publish(topic_path, data)
-  logging.info(f"Published {future.result()}")
+	publisher = pubsub_v1.PublisherClient()
+	topic_path = publisher.topic_path(os.environ['PROJECT_ID'], TOPIC_NAME)
+	data_str = json.dumps({"bucket":bucket,"path":path})
+	# Data must be a bytestring
+	data = data_str.encode("utf-8")
+	future = publisher.publish(topic_path, data)
+	logging.info(f"Published {future.result()}")
 
 def process_event(bucket, trigger_file_path):
-    try:
-        trigger_directory = trigger_file_path.rpartition("/")[0]
-        trigger_file_name = trigger_file_path.rpartition("/")[2]
-        processor = GcpDubbingProcessor(bucket, trigger_directory)
-        logging.info(f"Bucket: {bucket}, Name: {trigger_file_path}")
-        if trigger_file_name == CONFIG_FILE_NAME:
-            logging.info(f"Processing {trigger_file_path}")
-            processor.generate_utterances()
-        elif trigger_file_name == APPROVED_UTTERANCE_FILE_NAME:
-            logging.info(f"Processing {trigger_file_path}")
-            processor.dub_ad()
-        else:
-            logging.info(f"Ignoring {trigger_file_path}")
-            return
-        logging.info("Done")
-    except Exception as e:
-        logging.info("Error in generate_utterances")
-        logging.error(traceback.format_exc())
+	try:
+		trigger_directory = trigger_file_path.rpartition("/")[0]
+		trigger_file_name = trigger_file_path.rpartition("/")[2]
+		processor = GcpDubbingProcessor(bucket, trigger_directory)
+		logging.info(f"Bucket: {bucket}, Name: {trigger_file_path}")
+		if trigger_file_name == CONFIG_FILE_NAME:
+			logging.info(f"Processing {trigger_file_path}")
+			processor.generate_utterances()
+		elif trigger_file_name == APPROVED_UTTERANCE_FILE_NAME:
+			logging.info(f"Processing {trigger_file_path}")
+			processor.dub_ad()
+		else:
+			logging.info(f"Ignoring {trigger_file_path}")
+			return
+		logging.info("Done")
+	except Exception as e:
+		logging.info("Error in generate_utterances")
+		logging.error(traceback.format_exc())
 
 
 class GcpDubbingProcessor:
-    def __init__(
-            self,
-            bucket,
-            gcs_path):
-        self.bucket = storage_client.get_bucket(bucket)
-        self.gcs_path = gcs_path
-        self.config_path = f"{gcs_path}/{CONFIG_FILE_NAME}"
+	def __init__(
+		self,
+		bucket,
+		gcs_path):
+		self.bucket = storage_client.get_bucket(bucket)
+		self.gcs_path = gcs_path
+		self.config_path = f"{gcs_path}/{CONFIG_FILE_NAME}"
 
-        self.local_path = f"/tmp/ariel/{gcs_path}"
-        os.makedirs(self.local_path, exist_ok=True)
+		self.local_path = f"/tmp/ariel/{gcs_path}"
+		os.makedirs(self.local_path, exist_ok=True)
 
-        self.local_output_path = f"{self.local_path}/output"
-        os.makedirs(self.local_output_path, exist_ok=True)
+		self.local_output_path = f"{self.local_path}/output"
+		os.makedirs(self.local_output_path, exist_ok=True)
 
-        self.dubber_params = self.read_dubber_params_from_gcs()
-        logging.info(f'Dubber initial parameters: {self.dubber_params}')
-        self.dubber = Dubber(**self.dubber_params)
+		self.dubber_params = self.read_dubber_params_from_gcs()
+		logging.info(f'Dubber initial parameters: {self.dubber_params}')
+		self.dubber = Dubber(**self.dubber_params)
 
-    def generate_utterances(self):
-        self.download_input_video_from_gcs()
-        utterances = self.dubber.generate_utterance_metadata()
-        self.upload_utterances_to_gcs(utterances)
-        self.upload_media_files_to_gcs()
+	def generate_utterances(self):
+		self.download_input_video_from_gcs()
+		utterances = self.dubber.generate_utterance_metadata()
+		self.upload_utterances_to_gcs(utterances)
+		self.upload_media_files_to_gcs()
 
-    def dub_ad(self):
+	def dub_ad(self):
 
-        logging.info(
-            f"Processing {self.gcs_path}/{APPROVED_UTTERANCE_FILE_NAME}")
+		logging.info(
+			f"Processing {self.gcs_path}/{APPROVED_UTTERANCE_FILE_NAME}")
 
-        self.download_input_video_from_gcs()
-        self.download_workdir_files_from_gcs_to_local()
+		self.download_input_video_from_gcs()
+		self.download_workdir_files_from_gcs_to_local()
 
-        self.dubber.preprocesing_output = PreprocessingArtifacts(
-            video_file=f'{self.local_output_path}/input_video.mp4',
-            audio_file=f'{self.local_output_path}/input_audio.mp3',
-            audio_vocals_file=f"{self.local_output_path}" +
-            "/htdemucs/input_audio/vocals.mp3",
-            audio_background_file=f"{self.local_output_path}" +
-            "/htdemucs/input_audio/no_vocals.mp3"
-        )
+		self.dubber.preprocesing_output = PreprocessingArtifacts(
+			video_file=f'{self.local_output_path}/input_video.mp4',
+			audio_file=f'{self.local_output_path}/input_audio.mp3',
+			audio_vocals_file=f"{self.local_output_path}" +
+			"/htdemucs/input_audio/vocals.mp3",
+			audio_background_file=f"{self.local_output_path}" +
+			"/htdemucs/input_audio/no_vocals.mp3"
+		)
 
-        utterances_blob = self.bucket.blob(
-            f"{self.gcs_path}/{APPROVED_UTTERANCE_FILE_NAME}")
-        utterance_data = json.loads(
-            utterances_blob.download_as_string(client=None))
+		utterances_blob = self.bucket.blob(
+			f"{self.gcs_path}/{APPROVED_UTTERANCE_FILE_NAME}")
+		utterance_data = json.loads(
+			utterances_blob.download_as_string(client=None))
 
-        output = self.dubber.dub_ad_with_utterance_metadata(utterance_data)
+		output = self.dubber.dub_ad_with_utterance_metadata(utterance_data)
 
-        self.upload_dubbed_ad_to_gcs(output.video_file)
+		self.upload_dubbed_ad_to_gcs(output.video_file)
 
-    def download_input_video_from_gcs(self):
-        input_video_local_path = f"{self.local_path}/input.mp4"
-        input_video_gcs_path = f'{self.gcs_path}/input.mp4'
-        logging.info("Downloading input.mp4 file from " +
-                     f"{input_video_gcs_path} to {input_video_local_path}")
+	def download_input_video_from_gcs(self):
+		input_video_local_path = f"{self.local_path}/input.mp4"
+		input_video_gcs_path = f'{self.gcs_path}/input.mp4'
+		logging.info("Downloading input.mp4 file from " +
+			f"{input_video_gcs_path} to {input_video_local_path}")
 
-        video_blob = self.bucket.blob(input_video_gcs_path)
-        video_blob.download_to_filename(input_video_local_path)
+		video_blob = self.bucket.blob(input_video_gcs_path)
+		video_blob.download_to_filename(input_video_local_path)
 
-    def read_dubber_params_from_gcs(self):
-        """Sets target_language to first language in the list for error-proofing"""
-        config_blob = self.bucket.blob(self.config_path)
-        dubber_params = json.loads(config_blob.download_as_string(client=None))
-        logging.info(f"Input Parameters: {dubber_params}")
+	def read_dubber_params_from_gcs(self):
+		"""Sets target_language to first language in the list for error-proofing"""
+		config_blob = self.bucket.blob(self.config_path)
+		dubber_params = json.loads(config_blob.download_as_string(client=None))
+		logging.info(f"Input Parameters: {dubber_params}")
 
-        input_video_local_path = f"{self.local_path}/input.mp4"
-        dubber_params["input_file"] = input_video_local_path
-        dubber_params["output_directory"] = self.local_output_path
+		input_video_local_path = f"{self.local_path}/input.mp4"
+		dubber_params["input_file"] = input_video_local_path
+		dubber_params["output_directory"] = self.local_output_path
 
-        dubber_params['temperature'] = dubber_params.pop(
-            'gemini_temperature', 1.0)
-        dubber_params['top_p'] = dubber_params.pop('gemini_top_p', 0.95)
-        dubber_params['top_k'] = dubber_params.pop('gemini_top_k', 64)
-        dubber_params['max_output_tokens'] = dubber_params.pop(
-            'gemini_max_output_tokens', 8192)
-        dubber_params['with_verification'] = False
-        dubber_params['clean_up'] = False
-        return dubber_params
+		dubber_params['temperature'] = dubber_params.pop(
+			'gemini_temperature', 1.0)
+		dubber_params['top_p'] = dubber_params.pop('gemini_top_p', 0.95)
+		dubber_params['top_k'] = dubber_params.pop('gemini_top_k', 64)
+		dubber_params['max_output_tokens'] = dubber_params.pop(
+			'gemini_max_output_tokens', 8192)
+		dubber_params['with_verification'] = False
+		dubber_params['clean_up'] = False
+		return dubber_params
 
-    def upload_media_files_to_gcs(self):
-        logging.info("Uploading working directory media files to GCS")
-        mediaFileList = glob.glob(f'{self.local_output_path}/**/*.mp3') + \
-            glob.glob(f'{self.local_output_path}/**/*.mp4')
-        for media_file_path in mediaFileList:
-            logging.info(f"Uploading file {media_file_path} to GCS")
-            chunkfile_name = os.path.basename(media_file_path)
-            chunkfile_gcs_path = f'{self.gcs_path}/{chunkfile_name}'
-            self.bucket.blob(chunkfile_gcs_path).upload_from_filename(
-                media_file_path, client=None)
+	def upload_media_files_to_gcs(self):
+		logging.info("Uploading working directory media files to GCS")
+		mediaFileList = glob.glob(f'{self.local_output_path}/**/*.mp3') + \
+			glob.glob(f'{self.local_output_path}/**/*.mp4')
+		for media_file_path in mediaFileList:
+			logging.info(f"Uploading file {media_file_path} to GCS")
+			chunkfile_name = os.path.basename(media_file_path)
+			chunkfile_gcs_path = f'{self.gcs_path}/{chunkfile_name}'
+			self.bucket.blob(chunkfile_gcs_path).upload_from_filename(
+				media_file_path, client=None)
 
-    def download_workdir_files_from_gcs_to_local(self):
-        logging.info("Downloading working directory files from GCS")
-        prefix = f'{self.gcs_path}/'
-        for blob in storage_client.list_blobs(self.bucket.name, prefix=prefix):
-            if blob.name == prefix:
-                continue
-            logging.info(f"Downloading {blob.name} from GCS")
-            local_filename = blob.name.replace(prefix, '')
-            blob.download_to_filename(
-                f'{self.local_output_path}/{local_filename}')
+	def download_workdir_files_from_gcs_to_local(self):
+		logging.info("Downloading working directory files from GCS")
+		prefix = f'{self.gcs_path}/'
+		for blob in storage_client.list_blobs(self.bucket.name, prefix=prefix):
+			if blob.name == prefix:
+				continue
+			logging.info(f"Downloading {blob.name} from GCS")
+			local_filename = blob.name.replace(prefix, '')
+			blob.download_to_filename(
+				f'{self.local_output_path}/{local_filename}')
 
 
-    def upload_dubbed_ad_to_gcs(self, local_output_file_path: str):
-        filename = local_output_file_path.replace(
-            f"{self.local_output_path}/", "")
-        logging.info(f"Uploading dubbed ad {filename} to GCS")
+	def upload_dubbed_ad_to_gcs(self, local_output_file_path: str):
+		filename = local_output_file_path.replace(
+			f"{self.local_output_path}/", "")
+		logging.info(f"Uploading dubbed ad {filename} to GCS")
 
-        self.bucket.blob(f'{self.gcs_path}/{filename}').upload_from_filename(
-            f'{self.local_output_path}/{filename}', client=None)
+		self.bucket.blob(f'{self.gcs_path}/{filename}').upload_from_filename(
+			f'{self.local_output_path}/{filename}', client=None)
 
-    def upload_utterances_to_gcs(self, utterances):
-        logging.info("Utterances generated, writing files to GCS")
-        utterances_json = json.dumps(utterances)
-        logging.info(f"Utterances: {utterances_json}")
-        utterances_gcs_path = f"{self.gcs_path}/{UTTERANCE_FILE_NAME}"
-        storage_client.get_bucket(self.bucket).blob(utterances_gcs_path).upload_from_string(
-            utterances_json, client=None)
+	def upload_utterances_to_gcs(self, utterances):
+		logging.info("Utterances generated, writing files to GCS")
+		utterances_json = json.dumps(utterances)
+		logging.info(f"Utterances: {utterances_json}")
+		utterances_gcs_path = f"{self.gcs_path}/{UTTERANCE_FILE_NAME}"
+		storage_client.get_bucket(self.bucket).blob(utterances_gcs_path).upload_from_string(
+			utterances_json, client=None)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+	app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
