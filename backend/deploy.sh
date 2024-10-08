@@ -2,6 +2,8 @@
 GCP_PROJECT_ID=$(gcloud config get project)
 export GCS_BUCKET=$GCP_PROJECT_ID-ariel-us
 export GCP_REGION=us-central1
+#Use Docker build while developing - don't assume end user has Docker installed
+USE_CLOUD_BUILD=false
 
 gcloud config set project $GCP_PROJECT_ID
 gcloud services enable cloudresourcemanager.googleapis.com
@@ -66,40 +68,57 @@ gcloud --no-user-output-enabled projects add-iam-policy-binding \
     --role="roles/eventarc.serviceAgent"
 printf "Operation finished successfully!\n"
 
-printf "\nSetting up Docker registry and pushing image into it"
-DOCKER_REPO_NAME=gps-docker-repo
-REPO_EXISTS=$(gcloud artifacts repositories describe $DOCKER_REPO_NAME --location=$GCP_REGION > /dev/null 2>&1 && echo "true" || echo "false")
-if "${REPO_EXISTS}"; then
-  printf "\nWARN - Repository '$DOCKER_REPO_NAME' already exists in location '$GCP_REGION'. Skipping creation...\n"
+if $USE_CLOUD_BUILD; then
+  printf "\nINFO - Using Cloud Build to deploy from source"
+    gcloud beta run deploy ariel-process \
+    --region=$GCP_REGION \
+    --no-allow-unauthenticated \
+    --source=. \
+    --memory=32Gi \
+    --cpu=8 \
+    --gpu=1 \
+    --gpu-type=nvidia-l4 \
+    --max-instances=1 \
+    --timeout=600s \
+    --concurrency=2 \
+    --set-env-vars PROJECT_ID=$GCP_PROJECT_ID
 else
-  printf "\nINFO Creating artifacts repository for docker images"
-  gcloud artifacts repositories create $DOCKER_REPO_NAME --repository-format=docker \
-      --location=$GCP_REGION --description="Google Professional Services images" \
-      --project=$GCP_PROJECT_ID
-  test $? -eq 0 || exit
-  printf "\nINFO - Repository '$DOCKER_REPO_NAME' created successfully in location '$GCP_REGION'!\n"
+  printf "\nINFO - Using local Docker build to speed up development and deployment"
+  printf "\nINFO - Setting up Docker registry and pushing image into it"
+  DOCKER_REPO_NAME=gps-docker-repo
+  REPO_EXISTS=$(gcloud artifacts repositories describe $DOCKER_REPO_NAME --location=$GCP_REGION > /dev/null 2>&1 && echo "true" || echo "false")
+  if "${REPO_EXISTS}"; then
+    printf "\nWARN - Repository '$DOCKER_REPO_NAME' already exists in location '$GCP_REGION'. Skipping creation...\n"
+  else
+    printf "\nINFO Creating artifacts repository for docker images"
+    gcloud artifacts repositories create $DOCKER_REPO_NAME --repository-format=docker \
+        --location=$GCP_REGION --description="Google Professional Services images" \
+        --project=$GCP_PROJECT_ID
+    test $? -eq 0 || exit
+    printf "\nINFO - Repository '$DOCKER_REPO_NAME' created successfully in location '$GCP_REGION'!\n"
+  fi
+
+  ARTIFACT_POSITORY_NAME=$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$DOCKER_REPO_NAME
+  DOCKER_IMAGE_TAG=$ARTIFACT_POSITORY_NAME/ariel-process:latest
+
+  printf "\nINFO Building Docker image for ariel processor"
+  docker build -t $DOCKER_IMAGE_TAG .
+  docker push $DOCKER_IMAGE_TAG
+
+  printf "\nINFO - Deploying the 'ariel-process' Cloud Run container...\n"
+  gcloud beta run deploy ariel-process \
+    --region=$GCP_REGION \
+    --no-allow-unauthenticated \
+    --image=$DOCKER_IMAGE_TAG \
+    --memory=32Gi \
+    --cpu=8 \
+    --gpu=1 \
+    --gpu-type=nvidia-l4 \
+    --max-instances=1 \
+    --timeout=600s \
+    --concurrency=2 \
+    --set-env-vars PROJECT_ID=$GCP_PROJECT_ID
 fi
-
-ARTIFACT_POSITORY_NAME=$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$DOCKER_REPO_NAME
-DOCKER_IMAGE_TAG=$ARTIFACT_POSITORY_NAME/ariel-process:latest
-
-printf "\nINFO Building Docker image for ariel processor"
-docker build -t $DOCKER_IMAGE_TAG .
-docker push $DOCKER_IMAGE_TAG
-
-printf "\nINFO - Deploying the 'ariel-process' Cloud Run container...\n"
-gcloud beta run deploy ariel-process \
-  --region=$GCP_REGION \
-  --no-allow-unauthenticated \
-  --image=$DOCKER_IMAGE_TAG \
-  --memory=32Gi \
-  --cpu=8 \
-  --gpu=1 \
-  --gpu-type=nvidia-l4 \
-  --max-instances=1 \
-  --timeout=600s \
-  --concurrency=1 \
-  --set-env-vars PROJECT_ID=$GCP_PROJECT_ID
 
 printf "\nINFO Setting up triggers from GCS to Ariel processor topic in Cloud Run"
 gcloud eventarc triggers create ariel-bucket-trigger \
