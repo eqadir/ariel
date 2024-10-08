@@ -121,16 +121,8 @@ else
 fi
 
 printf "\nINFO Setting up triggers from GCS to Ariel processor topic in Cloud Run"
-gcloud eventarc triggers create ariel-bucket-trigger \
-  --destination-run-service=ariel-process \
-  --destination-run-region=$GCP_REGION \
-  --event-filters="type=google.cloud.storage.object.v1.finalized" \
-  --event-filters="bucket=$GCS_BUCKET" \
-  --location="$GCP_REGION" \
-  --service-account="$COMPUTE_SERVICE_ACCOUNT"
 
-printf "\nINFO Creating pub/sub topic and linking it back to processor"
-gcloud pubsub topics create ariel-topic
+gcloud storage buckets notifications create gs://$GCS_BUCKET --topic=ariel-topic --event-types="OBJECT_FINALIZE"
 
 SERVICE_URL=$(gcloud run services describe ariel-process --region $GCP_REGION --format='value(status.url)')
 

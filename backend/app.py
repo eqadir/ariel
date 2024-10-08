@@ -23,49 +23,25 @@ CONFIG_FILE_NAME = "config.json"
 UTTERANCE_FILE_NAME = "utterances.json"
 APPROVED_UTTERANCE_FILE_NAME = "utterances_approved.json"
 
-TOPIC_NAME = "ariel-topic"
-
 app = Flask(__name__)
 
 @app.route("/", methods=["POST"])
 def process():
 	envelope = request.get_json()
-	if "message" in envelope and "data" in envelope["message"]:
-		#pubsub message
-		message_str = base64.b64decode(envelope["message"]["data"]).decode("utf-8").strip()
-		message = json.loads(message_str)
-		bucket = message["bucket"]
-		path = message["path"]
+	message_str = base64.b64decode(envelope["message"]["data"]).decode("utf-8").strip()
+	message = json.loads(message_str)
+	bucket = message["bucket"]
+	path = message["name"]
+	if should_process_file(path):
 		logging.info(f"Processing message about file {bucket}/{path}")
 		process_event(bucket, path)
 		return "Processed", 204
 	else:
-		event = from_http(request.headers, request.get_data())
-		if event['type'] == "google.cloud.storage.object.v1.finalized":
-			path = event.data['name']
-			bucket = event.data['bucket']
-			logging.info(f"Received creation event for {path}")
-			if should_process_file(path):
-				push_message_to_pubsub(bucket,path)
-				return "Message published", 204
-			else:
-				logging.info(f"Ignoring file {bucket}/{path}")
-				return "Ignored file", 204
-
-	return "Incompatible event type received", 400
-
+		logging.info(f"Ignoring file {bucket}/{path}")
+		return "Ignored file", 204
 
 def should_process_file(path: str):
 	return path.endswith("config.json") or path.endswith("_approved.json")
-
-def push_message_to_pubsub(bucket, path):
-	publisher = pubsub_v1.PublisherClient()
-	topic_path = publisher.topic_path(os.environ['PROJECT_ID'], TOPIC_NAME)
-	data_str = json.dumps({"bucket":bucket,"path":path})
-	# Data must be a bytestring
-	data = data_str.encode("utf-8")
-	future = publisher.publish(topic_path, data)
-	logging.info(f"Published {future.result()}")
 
 def process_event(bucket, trigger_file_path):
 	try:
