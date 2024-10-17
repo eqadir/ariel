@@ -68,9 +68,10 @@ gcloud --no-user-output-enabled projects add-iam-policy-binding \
     --role="roles/eventarc.serviceAgent"
 printf "Operation finished successfully!\n"
 
+./setup_local.sh
 if $USE_CLOUD_BUILD; then
   printf "\nINFO - Using Cloud Build to deploy from source"
-    gcloud beta run deploy ariel-process \
+  gcloud beta run deploy ariel-process \
     --region=$GCP_REGION \
     --no-allow-unauthenticated \
     --source=. \
