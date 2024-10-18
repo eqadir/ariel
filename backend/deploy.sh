@@ -23,6 +23,20 @@ fi
 if "${CONFIGURE_APIS_AND_ROLES}"; then
   printf "\nINFO - Enabling GCP APIs...\n"
   gcloud services enable \
+    aiplatform.googleapis.com \
+    artifactregistry.googleapis.com \
+    cloudbuild.googleapis.com \
+    compute.googleapis.com \
+    eventarc.googleapis.com \
+    logging.googleapis.com \
+    pubsub.googleapis.com \
+    run.googleapis.com \
+    script.googleapis.com \
+    serviceusage.googleapis.com \
+    storage.googleapis.com
+if "${CONFIGURE_APIS_AND_ROLES}"; then
+  printf "\nINFO - Enabling GCP APIs...\n"
+  gcloud services enable \
     artifactregistry.googleapis.com \
     cloudbuild.googleapis.com \
     compute.googleapis.com \
