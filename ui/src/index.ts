@@ -13,13 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { hello } from './example-module';
-
-console.log(hello());
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 function doGet() {
-  return HtmlService.createTemplateFromFile('ui').evaluate().setTitle('');
+  return HtmlService.createTemplateFromFile('ui')
+    .evaluate()
+    .setTitle('Ariel AI Video Ad Dubbing');
 }
 /* eslint-disable @typescript-eslint/no-unused-vars */
 function include(filename: string) {
