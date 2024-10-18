@@ -1,32 +1,24 @@
 {
   "hugging_face_token": "",
-  "gemini_token": "",
-  "elevenlabs_token": "",
   "advertiser_name": "Trading 212",
-  "number_of_speakers": 2,
   "original_language": "en-US",
   "target_language": "pl-PL",
+  "number_of_speakers": 2,
+  "no_dubbing_phrases": [],
   "diarization_instructions": "",
   "translation_instructions": "",
-  "elevenlabs_clone_voices": false,
-  "preferred_voices": [
-    "Journey",
-    "Studio",
-    "Wavenet",
-    "Polyglot",
-    "News",
-    "Neural2",
-    "Standard"
-  ],
-  "no_dubbing_phrases": [],
-  "merge_utterances": true,
-  "minimum_merge_threshold": 0.001,
-  "adjust_speed": "true",
-  "vocals_time_adjustment": 5.0,
-  "background_volume_adjustment": 0.0,
-  "gemini_model_name": "gemini-1.5-flash",
-  "gemini_temperature": 1.0,
-  "gemini_top_p": 0.95,
-  "gemini_top_k": 64,
-  "gemini_max_output_tokens": 8192
+  "merge_utterances": True,
+  "minimum_merge_threshold": "0.001",
+  "preferred_voices": [],
+  "assigned_voices_override": {},
+  "keep_voice_assignments": True,
+  "adjust_speed": False,
+  "vocals_volume_adjustment": "5.0",
+  "background_volume_adjustment": "0.0",
+  "use_elevenlabs": False,
+  "elevenlabs_token": "",
+  "elevenlabs_clone_voices": False,
+  "elevenlabs_remove_cloned_voices": False
 }
+
+

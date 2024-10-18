@@ -12,6 +12,7 @@ import traceback
 import base64
 from ariel.dubbing import Dubber, PreprocessingArtifacts
 
+
 # logging.basicConfig()
 storage_client = google.cloud.storage.Client()
 log_client = cloudlogging.Client()
@@ -126,6 +127,11 @@ class GcpDubbingProcessor:
 
 	def read_dubber_params_from_gcs(self):
 		"""Sets target_language to first language in the list for error-proofing"""
+		# need to set the following parameters here, all else is coming from
+		# config.json
+    # gcp_project_id: str,
+    # gcp_region: str,
+
 		config_blob = self.bucket.blob(self.config_path)
 		dubber_params = json.loads(config_blob.download_as_string(client=None))
 		logging.info(f"Input Parameters: {dubber_params}")
@@ -133,13 +139,8 @@ class GcpDubbingProcessor:
 		input_video_local_path = f"{self.local_path}/input.mp4"
 		dubber_params["input_file"] = input_video_local_path
 		dubber_params["output_directory"] = self.local_output_path
-
-		dubber_params['temperature'] = dubber_params.pop(
-			'gemini_temperature', 1.0)
-		dubber_params['top_p'] = dubber_params.pop('gemini_top_p', 0.95)
-		dubber_params['top_k'] = dubber_params.pop('gemini_top_k', 64)
-		dubber_params['max_output_tokens'] = dubber_params.pop(
-			'gemini_max_output_tokens', 8192)
+		dubber_params["gcp_project_id"] = os.environ.get("PROJECT_ID")
+		dubber_params["gcp_region"] = os.environ.get("REGION")
 		dubber_params['with_verification'] = False
 		dubber_params['clean_up'] = False
 		return dubber_params
@@ -172,7 +173,8 @@ class GcpDubbingProcessor:
 			f"{self.local_output_path}/", "")
 		logging.info(f"Uploading dubbed ad {filename} to GCS")
 
-		self.bucket.blob(f'{self.gcs_path}/{filename}').upload_from_filename(
+		output_video_gcs_file_name = "dubbed_video.mp4"
+		self.bucket.blob(f'{self.gcs_path}/{output_video_gcs_file_name}').upload_from_filename(
 			f'{self.local_output_path}/{filename}', client=None)
 
 	def upload_utterances_to_gcs(self, utterances):

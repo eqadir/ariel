@@ -6,5 +6,6 @@ docker run -it \
 -e PORT=8888 \
 -e GOOGLE_APPLICATION_CREDENTIALS=/tmp/keys/FILE_NAME.json \
 -v $GOOGLE_APPLICATION_CREDENTIALS:/tmp/keys/FILE_NAME.json:ro \
--e GOOGLE_CLOUD_PROJECT="$(gcloud config get project)" \
+-e PROJECT_ID="$(gcloud config get project)" \
+-e REGION="us-central1" \
  gtech/ariel

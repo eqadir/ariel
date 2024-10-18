@@ -81,7 +81,8 @@ if $USE_CLOUD_BUILD; then
     --max-instances=1 \
     --timeout=600s \
     --concurrency=2 \
-    --set-env-vars PROJECT_ID=$GCP_PROJECT_ID
+    --set-env-vars PROJECT_ID=$GCP_PROJECT_ID \
+    --set-env-vars REGION=$$GCP_REGION
 else
   printf "\nINFO - Using local Docker build to speed up development and deployment"
   printf "\nINFO - Setting up Docker registry and pushing image into it"
@@ -117,7 +118,8 @@ else
     --max-instances=1 \
     --timeout=600s \
     --concurrency=2 \
-    --set-env-vars PROJECT_ID=$GCP_PROJECT_ID
+    --set-env-vars PROJECT_ID=$GCP_PROJECT_ID \
+    --set-env-vars REGION=$$GCP_REGION
 fi
 
 printf "\nINFO Setting up triggers from GCS to Ariel processor topic in Cloud Run"
