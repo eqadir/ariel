@@ -25,8 +25,8 @@ limitations under the License.
 </mat-toolbar>
 <br />
 <mat-stepper orientation="vertical" [linear]="isLinear" #stepper>
-  <mat-step [stepControl]="firstFormGroup">
-    <form [formGroup]="firstFormGroup">
+  <mat-step [stepControl]="configFormGroup">
+    <form [formGroup]="configFormGroup">
       <ng-template matStepLabel>Basic configuration</ng-template>
       <mat-form-field class="full-width">
         <mat-label>Google Cloud Project ID</mat-label>
@@ -34,7 +34,7 @@ limitations under the License.
           matInput
           placeholder="e.g. my-cloud-project"
           value="my-cloud-project"
-          formControlName="firstCtrl"
+          formControlName="cloudProjectId"
           required
         />
       </mat-form-field>
@@ -43,7 +43,7 @@ limitations under the License.
         <input
           matInput
           placeholder="Generate an API token at Google AI Studio"
-          formControlName="firstCtrl"
+          formControlName="geminiApiToken"
           required
         />
       </mat-form-field>
@@ -52,7 +52,7 @@ limitations under the License.
         <input
           matInput
           placeholder="Generate a token at HuggingFace"
-          formControlName="firstCtrl"
+          formControlName="huggingFaceApiToken"
           required
         />
       </mat-form-field>
@@ -61,15 +61,15 @@ limitations under the License.
       </div>
     </form>
   </mat-step>
-  <mat-step [stepControl]="firstFormGroup">
-    <form [formGroup]="firstFormGroup">
+  <mat-step [stepControl]="configFormGroup">
+    <form [formGroup]="configFormGroup">
       <ng-template matStepLabel>Dubber settings</ng-template>
       <mat-form-field class="full-width">
         <mat-label>Advertiser name</mat-label>
         <input
           matInput
           placeholder="Name of the advertiser."
-          formControlName="firstCtrl"
+          formControlName="advertiserName"
           required
         />
       </mat-form-field>
@@ -78,7 +78,7 @@ limitations under the License.
         <input
           matInput
           placeholder="Path to the input video or audio file e.g. gs://cloud-storage-bucket/ariel-input/"
-          formControlName="firstCtrl"
+          formControlName="inputVideoFile"
           required
         />
       </mat-form-field>
@@ -87,13 +87,13 @@ limitations under the License.
         <input
           matInput
           placeholder="Directory to save output files e.g. gs://cloud-storage-bucket/ariel-output/"
-          formControlName="firstCtrl"
+          formControlName="outputDirectory"
           required
         />
       </mat-form-field>
       <mat-form-field class="full-width">
         <mat-label>Original Language</mat-label>
-        <select matNativeControl formControlName="firstCtrl" required>
+        <select matNativeControl formControlName="originalLanguage" required>
           <option value="ar-SA">Arabic (SA)</option>
           <option value="ar-EG">Arabic (EG)</option>
           <option value="bn-BD">Bengali (BD)</option>
@@ -153,7 +153,7 @@ limitations under the License.
       </mat-form-field>
       <mat-form-field class="full-width">
         <mat-label>Target Language</mat-label>
-        <select matNativeControl formControlName="firstCtrl" required>
+        <select matNativeControl formControlName="targetLanguage" required>
           <option value="ar-SA">Arabic (SA)</option>
           <option value="ar-EG">Arabic (EG)</option>
           <option value="bn-BD">Bengali (BD)</option>
@@ -218,7 +218,12 @@ limitations under the License.
         <label class="slider-value-label">{{ numSpeakersSlider.value }}</label>
       </div>
       <mat-slider min="0" max="5" step="1" class="full-width">
-        <input matSliderThumb value="1" #numSpeakersSlider />
+        <input
+          matSliderThumb
+          value="1"
+          #numSpeakersSlider
+          formControlName="numSpeakersSlider"
+        />
       </mat-slider>
       <input-chips class="full-width" [(chips)]="preferredVoices">
       </input-chips>
@@ -286,7 +291,7 @@ limitations under the License.
         <input
           matInput
           placeholder="Phrases to exclude in the dubbing process. The original utterance will be used instead."
-          formControlName="firstCtrl"
+          formControlName="noDubPhrases"
         />
       </mat-form-field>
       <mat-form-field class="full-width">
@@ -294,7 +299,7 @@ limitations under the License.
         <input
           matInput
           placeholder="Specific instructions for speaker diarization."
-          formControlName="firstCtrl"
+          formControlName="diarizationInstructions"
         />
       </mat-form-field>
       <mat-form-field class="full-width">
@@ -302,12 +307,13 @@ limitations under the License.
         <input
           matInput
           placeholder="Specific instructions for translation."
-          formControlName="firstCtrl"
+          formControlName="translationInstructions"
         />
       </mat-form-field>
       <mat-checkbox
         class="full-width"
         matTooltip="Merge utterances with timestamps closer than the threshold."
+        formControlName="mergeUtterances"
         >Merge utterances</mat-checkbox
       >
       <div class="slider-label-container full-width">
@@ -322,13 +328,13 @@ limitations under the License.
         <input
           matSliderThumb
           value="0.001"
-          formControlName="firstCtrl"
+          formControlName="minMergeThresholdSlider"
           #minMergeThresholdSlider
         />
       </mat-slider>
       <div>
         <button mat-button matStepperPrevious>Back</button>
-        <button mat-button matStepperNext (click)="generateTranslations()">
+        <button mat-button matStepperNext (click)="generateUtterances()">
           Generate translations
         </button>
       </div>

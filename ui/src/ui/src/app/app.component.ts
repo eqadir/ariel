@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { HttpClientModule } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import {
   FormBuilder,
@@ -33,6 +33,7 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ApiCallsService } from './api-calls/api-calls.service';
 import { Chip, InputChipsComponent } from './input-chips.component';
 
 interface Dubbing {
@@ -85,17 +86,12 @@ export class AppComponent {
   dubbedInstances!: Dubbing[];
   dubbedUrl: string = '/assets/sample_dub.json';
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    // private http: HttpClient,
+    private apiCalls: ApiCallsService,
+    private formBuilder: FormBuilder
+  ) {}
 
-  async generateTranslations() {
-    // TODO(): Call the cloud run backend to generate the translations and return them.
-    this.loadingTranslations = true;
-    await new Promise(r => setTimeout(r, 2000)); // TODO(): Get rid of me.
-    this.http.get(this.dubbedUrl).subscribe(res => {
-      this.dubbedInstances = res as Dubbing[];
-      this.loadingTranslations = false;
-    });
-  }
   toggleEdit(dubbing: Dubbing): void {
     dubbing.editing = !dubbing.editing;
   }
@@ -107,11 +103,39 @@ export class AppComponent {
 
   private _formBuilder = inject(FormBuilder);
 
-  firstFormGroup = this._formBuilder.group({
-    firstCtrl: ['', Validators.required],
+  configFormGroup = this._formBuilder.group({
+    cloudProjectId: ['', Validators.required],
+    geminiApiToken: ['', Validators.required],
+    huggingFaceApiToken: ['', Validators.required],
+    advertiserName: ['', Validators.required],
+    inputVideoFile: ['', Validators.required],
+    outputDirectory: ['', Validators.required],
+    originalLanguage: ['', Validators.required],
+    targetLanguage: ['', Validators.required],
+    numSpeakersSlider: ['', Validators.required],
+    noDubPhrases: ['', Validators.required],
+    diarizationInstructions: ['', Validators.required],
+    translationInstructions: ['', Validators.required],
+    mergeUtterances: ['', Validators.required],
+    minMergeThresholdSlider: ['', Validators.required],
   });
   secondFormGroup = this._formBuilder.group({
     secondCtrl: ['', Validators.required],
   });
+
+  generateUtterances() {
+    if (this.configFormGroup.valid) {
+      this.loadingTranslations = true;
+      const configData = this.configFormGroup.value;
+      const configDataJson = JSON.stringify(configData);
+      // TODO(): Upload video to gcs as well as uploading the configuration data.
+      this.apiCalls.generateUtterances(configDataJson).subscribe(data => {
+        this.dubbedInstances = data as unknown as Dubbing[]; // TODO(): Remove unknown once done with implementing methods.
+        this.loadingTranslations = false;
+      });
+    } else {
+      // TODO(): Config form is invalid. Display error messages.
+    }
+  }
   isLinear = false;
 }
