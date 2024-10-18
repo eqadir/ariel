@@ -98,7 +98,7 @@ class GcpDubbingProcessor:
 		self.download_input_video_from_gcs()
 		self.download_workdir_files_from_gcs_to_local()
 
-		self.dubber.preprocesing_output = PreprocessingArtifacts(
+		preprocessing_artifacts = PreprocessingArtifacts(
 			video_file=f'{self.local_output_path}/input_video.mp4',
 			audio_file=f'{self.local_output_path}/input_audio.mp3',
 			audio_vocals_file=f"{self.local_output_path}" +
@@ -112,7 +112,7 @@ class GcpDubbingProcessor:
 		utterance_data = json.loads(
 			utterances_blob.download_as_string(client=None))
 
-		output = self.dubber.dub_ad_with_utterance_metadata(utterance_data)
+		output = self.dubber.dub_ad_with_utterance_metadata(utterance_metadata=utterance_data, preprocessing_artifacts=preprocessing_artifacts)
 
 		self.upload_dubbed_ad_to_gcs(output.video_file)
 
@@ -129,8 +129,8 @@ class GcpDubbingProcessor:
 		"""Sets target_language to first language in the list for error-proofing"""
 		# need to set the following parameters here, all else is coming from
 		# config.json
-    # gcp_project_id: str,
-    # gcp_region: str,
+			# gcp_project_id: str,
+			# gcp_region: str,
 
 		config_blob = self.bucket.blob(self.config_path)
 		dubber_params = json.loads(config_blob.download_as_string(client=None))

@@ -4,6 +4,7 @@ export GCS_BUCKET=$GCP_PROJECT_ID-ariel-us
 export GCP_REGION=us-central1
 #Use Docker build while developing - don't assume end user has Docker installed
 USE_CLOUD_BUILD=false
+CONFIGURE_APIS_AND_ROLES=true
 
 gcloud config set project $GCP_PROJECT_ID
 gcloud services enable cloudresourcemanager.googleapis.com
@@ -19,54 +20,56 @@ else
   printf "\nINFO - Bucket '$GCS_BUCKET' created successfully in location '$GCP_REGION'!\n"
 fi
 
-printf "\nINFO - Enabling GCP APIs...\n"
-gcloud services enable \
-  artifactregistry.googleapis.com \
-  cloudbuild.googleapis.com \
-  compute.googleapis.com \
-  eventarc.googleapis.com \
-  logging.googleapis.com \
-  pubsub.googleapis.com \
-  run.googleapis.com \
-  script.googleapis.com \
-  serviceusage.googleapis.com \
-  storage.googleapis.com
+if "${CONFIGURE_APIS_AND_ROLES}"; then
+  printf "\nINFO - Enabling GCP APIs...\n"
+  gcloud services enable \
+    artifactregistry.googleapis.com \
+    cloudbuild.googleapis.com \
+    compute.googleapis.com \
+    eventarc.googleapis.com \
+    logging.googleapis.com \
+    pubsub.googleapis.com \
+    run.googleapis.com \
+    script.googleapis.com \
+    serviceusage.googleapis.com \
+    storage.googleapis.com
 
-PROJECT_NUMBER=$(gcloud projects describe $GCP_PROJECT_ID --format="value(projectNumber)")
-STORAGE_SERVICE_ACCOUNT="service-${PROJECT_NUMBER}@gs-project-accounts.iam.gserviceaccount.com"
-EVENTARC_SERVICE_ACCOUNT="service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com"
-COMPUTE_SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-printf "\nINFO - Creating Service Agents and granting roles...\n"
-for SA in "storage.googleapis.com" "eventarc.googleapis.com"; do
-    gcloud --no-user-output-enabled beta services identity create --project=$GCP_PROJECT_ID \
-        --service="${SA}"
-done
-COMPUTE_SA_ROLES=(
-    "roles/eventarc.eventReceiver"
-    "roles/run.invoker"
-    "roles/cloudfunctions.invoker"
-    "roles/storage.objectAdmin"
-    "roles/aiplatform.user"
-    "roles/logging.logWriter"
-    "roles/artifactregistry.createOnPushWriter"
-    "roles/cloudbuild.builds.builder"
-    "roles/run.invoker"
-)
-for COMPUTE_SA_ROLE in "${COMPUTE_SA_ROLES[@]}"; do
-    gcloud --no-user-output-enabled projects add-iam-policy-binding \
-        $GCP_PROJECT_ID \
-        --member="serviceAccount:${COMPUTE_SERVICE_ACCOUNT}" \
-        --role="${COMPUTE_SA_ROLE}"
-done
-gcloud --no-user-output-enabled projects add-iam-policy-binding \
-    $GCP_PROJECT_ID \
-    --member="serviceAccount:${STORAGE_SERVICE_ACCOUNT}" \
-    --role="roles/pubsub.publisher"
-gcloud --no-user-output-enabled projects add-iam-policy-binding \
-    $GCP_PROJECT_ID \
-    --member="serviceAccount:${EVENTARC_SERVICE_ACCOUNT}" \
-    --role="roles/eventarc.serviceAgent"
-printf "Operation finished successfully!\n"
+  PROJECT_NUMBER=$(gcloud projects describe $GCP_PROJECT_ID --format="value(projectNumber)")
+  STORAGE_SERVICE_ACCOUNT="service-${PROJECT_NUMBER}@gs-project-accounts.iam.gserviceaccount.com"
+  EVENTARC_SERVICE_ACCOUNT="service-${PROJECT_NUMBER}@gcp-sa-eventarc.iam.gserviceaccount.com"
+  COMPUTE_SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+  printf "\nINFO - Creating Service Agents and granting roles...\n"
+  for SA in "storage.googleapis.com" "eventarc.googleapis.com"; do
+      gcloud --no-user-output-enabled beta services identity create --project=$GCP_PROJECT_ID \
+          --service="${SA}"
+  done
+  COMPUTE_SA_ROLES=(
+      "roles/eventarc.eventReceiver"
+      "roles/run.invoker"
+      "roles/cloudfunctions.invoker"
+      "roles/storage.objectAdmin"
+      "roles/aiplatform.user"
+      "roles/logging.logWriter"
+      "roles/artifactregistry.createOnPushWriter"
+      "roles/cloudbuild.builds.builder"
+      "roles/run.invoker"
+  )
+  for COMPUTE_SA_ROLE in "${COMPUTE_SA_ROLES[@]}"; do
+      gcloud --no-user-output-enabled projects add-iam-policy-binding \
+          $GCP_PROJECT_ID \
+          --member="serviceAccount:${COMPUTE_SERVICE_ACCOUNT}" \
+          --role="${COMPUTE_SA_ROLE}"
+  done
+  gcloud --no-user-output-enabled projects add-iam-policy-binding \
+      $GCP_PROJECT_ID \
+      --member="serviceAccount:${STORAGE_SERVICE_ACCOUNT}" \
+      --role="roles/pubsub.publisher"
+  gcloud --no-user-output-enabled projects add-iam-policy-binding \
+      $GCP_PROJECT_ID \
+      --member="serviceAccount:${EVENTARC_SERVICE_ACCOUNT}" \
+      --role="roles/eventarc.serviceAgent"
+  printf "Operation finished successfully!\n"
+fi
 
 if $USE_CLOUD_BUILD; then
   printf "\nINFO - Using Cloud Build to deploy from source"
