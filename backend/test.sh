@@ -2,7 +2,7 @@
 BUCKET=cse-kubarozek-sandbox-ariel-us
 BUCKET_PATH="gs://$BUCKET/test-shell"
 
-gsutil rm -r $BUCKET_PATH
+gsutil -m rm -r $BUCKET_PATH
 
 gsutil cp gs://$BUCKET/input.mp4 $BUCKET_PATH/input.mp4
 

@@ -8,8 +8,6 @@ export GCP_REGION=us-central1
 USE_CLOUD_BUILD=${USE_CLOUD_BUILD:=true}
 CONFIGURE_APIS_AND_ROLES=${CONFIGURE_APIS_AND_ROLES:=true}
 
-echo $USE_CLOUD_BUILD
-echo $CONFIGURE_APIS_AND_ROLES
 gcloud config set project $GCP_PROJECT_ID
 gcloud services enable cloudresourcemanager.googleapis.com
 gcloud auth application-default set-quota-project $GCP_PROJECT_ID
@@ -145,6 +143,7 @@ fi
 
 printf "\nINFO Setting up triggers from GCS to Ariel processor topic in Cloud Run"
 
+gcloud storage buckets notifications delete gs://$GCS_BUCKET
 gcloud storage buckets notifications create gs://$GCS_BUCKET --topic=ariel-topic --event-types="OBJECT_FINALIZE"
 
 SERVICE_URL=$(gcloud run services describe ariel-process --region $GCP_REGION --format='value(status.url)')
