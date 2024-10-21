@@ -3,9 +3,13 @@ GCP_PROJECT_ID=$(gcloud config get project)
 export GCS_BUCKET=$GCP_PROJECT_ID-ariel-us
 export GCP_REGION=us-central1
 #Use Docker build while developing - don't assume end user has Docker installed
-USE_CLOUD_BUILD=false
-CONFIGURE_APIS_AND_ROLES=true
+# export different values in your shell to make it work locally. Defaults are for
+# deployment environment
+USE_CLOUD_BUILD=${USE_CLOUD_BUILD:=true}
+CONFIGURE_APIS_AND_ROLES=${CONFIGURE_APIS_AND_ROLES:=true}
 
+echo $USE_CLOUD_BUILD
+echo $CONFIGURE_APIS_AND_ROLES
 gcloud config set project $GCP_PROJECT_ID
 gcloud services enable cloudresourcemanager.googleapis.com
 gcloud auth application-default set-quota-project $GCP_PROJECT_ID
