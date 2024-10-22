@@ -36,19 +36,6 @@ if "${CONFIGURE_APIS_AND_ROLES}"; then
     script.googleapis.com \
     serviceusage.googleapis.com \
     storage.googleapis.com
-if "${CONFIGURE_APIS_AND_ROLES}"; then
-  printf "\nINFO - Enabling GCP APIs...\n"
-  gcloud services enable \
-    artifactregistry.googleapis.com \
-    cloudbuild.googleapis.com \
-    compute.googleapis.com \
-    eventarc.googleapis.com \
-    logging.googleapis.com \
-    pubsub.googleapis.com \
-    run.googleapis.com \
-    script.googleapis.com \
-    serviceusage.googleapis.com \
-    storage.googleapis.com
 
   PROJECT_NUMBER=$(gcloud projects describe $GCP_PROJECT_ID --format="value(projectNumber)")
   STORAGE_SERVICE_ACCOUNT="service-${PROJECT_NUMBER}@gs-project-accounts.iam.gserviceaccount.com"
@@ -98,6 +85,7 @@ if $USE_CLOUD_BUILD; then
     --gpu=1 \
     --gpu-type=nvidia-l4 \
     --max-instances=1 \
+    --min-instances=1 \
     --timeout=600s \
     --concurrency=2 \
     --set-env-vars PROJECT_ID=$GCP_PROJECT_ID \
@@ -135,6 +123,7 @@ else
     --gpu=1 \
     --gpu-type=nvidia-l4 \
     --max-instances=1 \
+    --min-instances=1 \
     --timeout=600s \
     --concurrency=2 \
     --set-env-vars PROJECT_ID=$GCP_PROJECT_ID \
