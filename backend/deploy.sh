@@ -87,7 +87,7 @@ if $USE_CLOUD_BUILD; then
     --max-instances=1 \
     --min-instances=1 \
     --timeout=600s \
-    --concurrency=2 \
+    --concurrency=7 \
     --set-env-vars PROJECT_ID=$GCP_PROJECT_ID \
     --set-env-vars REGION=$GCP_REGION
 else
@@ -125,7 +125,7 @@ else
     --max-instances=1 \
     --min-instances=1 \
     --timeout=600s \
-    --concurrency=2 \
+    --concurrency=7 \
     --set-env-vars PROJECT_ID=$GCP_PROJECT_ID \
     --set-env-vars REGION=$GCP_REGION
 fi

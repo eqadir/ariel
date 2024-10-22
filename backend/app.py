@@ -160,6 +160,16 @@ class GcpDubbingProcessor:
 		self.dubber_params = self.read_dubber_params_from_config()
 		self.inject_required_dubber_params()
 		logging.info(f'Dubber initial parameters: {self.dubber_params}')
+		local_output_path = f"{self.local_path}/{WORKDIR_NAME}"
+		self.preprocessing_artifacts = PreprocessingArtifacts(
+			video_file=f'{local_output_path}/video_processing/input_video.mp4',
+			audio_file=f'{local_output_path}/video_processing/input_audio.mp3',
+			audio_vocals_file=f"{local_output_path}" +
+			"/audio_processing/htdemucs/input_audio/vocals.mp3",
+			audio_background_file=f"{local_output_path}" +
+			"/audio_processing/htdemucs/input_audio/no_vocals.mp3"
+		)
+
 		self.dubber = Dubber(**self.dubber_params)
 		self.dubber.progress_bar = DummyProgressBar()
 
@@ -186,23 +196,31 @@ class GcpDubbingProcessor:
 		with open(f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}") as f:
 			utterance_metadata = json.load(f)
 			self.dubber.utterance_metadata = utterance_metadata
+			self.dubber.preprocessing_output = self.preprocessing_artifacts
 			self.dubber.run_text_to_speech()
 
 	def _render_dubbed_video(self):
-		local_output_path = f"{self.local_path}/{WORKDIR_NAME}"
-		preprocessing_artifacts = PreprocessingArtifacts(
-			video_file=f'{local_output_path}/video_processing/input_video.mp4',
-			audio_file=f'{local_output_path}/video_processing/input_audio.mp3',
-			audio_vocals_file=f"{local_output_path}" +
-			"/audio_processing/htdemucs/input_audio/vocals.mp3",
-			audio_background_file=f"{local_output_path}" +
-			"/audio_processing/htdemucs/input_audio/no_vocals.mp3"
-		)
 		with open(f"{self.local_path}/{APPROVED_UTTERANCE_FILE_NAME}") as f:
-			utterance_metadata = json.load(f)
-			output = self.dubber.dub_ad_with_utterance_metadata(utterance_metadata=utterance_metadata, preprocessing_artifacts=preprocessing_artifacts,overwrite_utterance_metadata=True)
+			self.dubber.utterance_metadata = json.load(f)
+			self.dubber.preprocessing_output = self.preprocessing_artifacts
+			# output = self.dubber.dub_ad_with_utterance_metadata(utterance_metadata=utterance_metadata, preprocessing_artifacts=self.preprocessing_artifacts,overwrite_utterance_metadata=True)
 
-		shutil.copyfile(output.video_file, f"{self.local_path}/{DUBBED_VIDEO_FILE_NAME}")
+			self.dubber.run_text_to_speech()
+			self.dubber.run_postprocessing()
+			self.dubber.run_save_utterance_metadata()
+			self.dubber.postprocessing_output.utterance_metadata = (
+        self.dubber.save_utterance_metadata_output
+    	)
+			subtitles_path = translation.save_srt_subtitles(
+        utterance_metadata=self.dubber.utterance_metadata,
+        output_directory=os.path.join(self.dubber.output_directory, WORKDIR_NAME),
+    	)
+			self.dubber.postprocessing_output.subtitles = subtitles_path
+			if self.dubber.elevenlabs_clone_voices and self.dubber.elevenlabs_remove_cloned_voices:
+				self.dubber.text_to_speech.remove_cloned_elevenlabs_voices()
+			output_video_file = self.dubber.postprocessing_output.video_file
+
+			shutil.copyfile(output_video_file, f"{self.local_path}/{DUBBED_VIDEO_FILE_NAME}")
 
 	def read_dubber_params_from_config(self):
 		with open(f"{self.local_path}/{CONFIG_FILE_NAME}") as f:
@@ -221,5 +239,6 @@ class GcpDubbingProcessor:
 
 if __name__ == "__main__":
 	# process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/config.json")
-	process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/utterances_approved.json")
+	process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/utterances_preview.json")
+	# process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/utterances_approved.json")
 

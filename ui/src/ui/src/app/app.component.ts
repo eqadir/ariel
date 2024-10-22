@@ -126,10 +126,10 @@ export class AppComponent {
   generateUtterances() {
     if (this.configFormGroup.valid) {
       this.loadingTranslations = true;
-      const configData = this.configFormGroup.value;
-      const configDataJson = JSON.stringify(configData);
+      // const configData = this.configFormGroup.value;
+      // const configDataJson = JSON.stringify(configData);
       // TODO(): Upload video to gcs as well as uploading the configuration data.
-      this.apiCalls.generateUtterances(configDataJson).subscribe(data => {
+      this.apiCalls.generateUtterances().subscribe(data => {
         this.dubbedInstances = data as unknown as Dubbing[]; // TODO(): Remove unknown once done with implementing methods.
         this.loadingTranslations = false;
       });
