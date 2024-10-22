@@ -13,19 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import { ScriptUtil } from './script-util';
-/* eslint-disable @typescript-eslint/no-unused-vars */
-function doGet() {
-  return HtmlService.createTemplateFromFile('ui')
-    .evaluate()
-    .setTitle('Ariel AI Video Ad Dubbing');
-}
-/* eslint-disable @typescript-eslint/no-unused-vars */
-function include(filename: string) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
-}
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function getUserAuthToken() {
-  return ScriptUtil.getOAuthToken();
-}
+export const CONFIG = {
+  cloudStorage: {
+    bucket: 'cse-kubarozek-sandbox-ariel-us',
+    // bucket: 'ariel_testing',
+    endpointBase: 'https://storage.googleapis.com/storage/v1',
+    uploadEndpointBase: 'https://storage.googleapis.com/upload/storage/v1',
+    authenticatedEndpointBase: 'https://storage.mtls.cloud.google.com',
+    browsingEndpointBase: 'https://console.cloud.google.com/storage/browser',
+  },
+  videoFolderNameSeparator: '--',
+  debug: true,
+};

@@ -15,7 +15,7 @@
  */
 import { HttpClient } from '@angular/common/http';
 import { Injectable, NgZone } from '@angular/core';
-import { Observable, lastValueFrom } from 'rxjs';
+import { lastValueFrom, Observable, of } from 'rxjs';
 import { ApiCalls } from './api-calls.service.interface';
 
 @Injectable({
@@ -27,20 +27,32 @@ export class ApiCallsService implements ApiCalls {
     private httpClient: HttpClient
   ) {}
 
-  generateUtterances(data: string): Observable<string> {
+  getFromGcs(data: string, retryDelay = 0, maxRetries = 0): Observable<string> {
     return new Observable(subscriber => {
-      console.log(`Generating utterances with the following config: ${data}`);
+      console.log(
+        `Generating utterances with the following config: ${data}, Retrydelay: ${retryDelay}, MaxRetries: ${maxRetries}`
+      );
       setTimeout(() => {
         this.ngZone.run(async () => {
           subscriber.next(
-            JSON.parse(
-              await this.loadLocalFile('/assets/sample_utterances.json')
-            )
+            await this.loadLocalFile('/assets/sample_utterances.json')
           );
           subscriber.complete();
         });
       }, 2000);
     });
+  }
+
+  postToGcs(
+    file: File,
+    folder: string,
+    filename: string,
+    contentType: string
+  ): Observable<string[]> {
+    console.log(
+      `Running locally. Fake file uploaded: ${file.name}} with contentType ${contentType} `
+    );
+    return of([folder, filename]);
   }
 
   async loadLocalFile(path: string) {

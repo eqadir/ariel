@@ -1,22 +1,47 @@
 [
   {
-    "text": "Hello world.",
     "start": 0.03096875,
     "end": 9.160343750000003,
-    "path": "example/chunk_0.03096875_9.160343750000003.mp3",
+    "path": "/tmp/ariel/input.mp4--1729598063580/output/audio_processing/chunk_0.03096875_9.160343750000003.mp3",
+    "text": " Build wealth every day with Trading 212.  Invest with zero interest and win 4.2% interest for your uninvested euros.",
+    "for_dubbing": true,
     "speaker_id": "speaker_01",
     "ssml_gender": "Male",
-    "translated_text": "Hallo Welt.",
-    "assigned_google_voice": "en-US-Journey-D"
+    "translated_text": "Buduj sw\u00f3j maj\u0105tek ka\u017cdego dnia z Trading dwa jeden dwa.  Inwestuj bez prowizji i zarabiaj cztery przecinek dwa procent na odsetkach od swoich nieinwestowanych euro.",
+    "assigned_voice": "pl-PL-Wavenet-B",
+    "pitch": -10.0,
+    "speed": 1.0,
+    "volume_gain_db": 16.0,
+    "adjust_speed": false
   },
   {
-    "text": "I am Ariel.",
-    "start": 9.160343750000004,
-    "end": 17.160343750000003,
-    "path": "example/chunk_0.03096875_9.160343750000003.mp3",
+    "start": 9.599093750000002,
+    "end": 12.434093750000002,
+    "path": "/tmp/ariel/input.mp4--1729598063580/output/audio_processing/chunk_9.599093750000002_12.434093750000002.mp3",
+    "text": " You pay every day.  Analyzing every moment.",
+    "for_dubbing": true,
     "speaker_id": "speaker_01",
     "ssml_gender": "Male",
-    "translated_text": "Ich bin Ariel.",
-    "assigned_google_voice": "en-US-Journey-D"
+    "translated_text": "P\u0142acisz ka\u017cdego dnia.  Analizujemy ka\u017cd\u0105 chwil\u0119.",
+    "assigned_voice": "pl-PL-Wavenet-B",
+    "pitch": -10.0,
+    "speed": 1.0,
+    "volume_gain_db": 16.0,
+    "adjust_speed": false
+  },
+  {
+    "start": 13.227218750000002,
+    "end": 20.04471875,
+    "path": "/tmp/ariel/input.mp4--1729598063580/output/audio_processing/chunk_13.227218750000002_20.04471875.mp3",
+    "text": " Get the Trading 212 app now and become one of our more than 2.5 million customers.",
+    "for_dubbing": true,
+    "speaker_id": "speaker_01",
+    "ssml_gender": "Male",
+    "translated_text": "Pobierz aplikacj\u0119 Trading dwa jeden dwa ju\u017c teraz i do\u0142\u0105cz do ponad dw\u00f3ch i p\u00f3\u0142 miliona naszych klient\u00f3w.",
+    "assigned_voice": "pl-PL-Wavenet-B",
+    "pitch": -10.0,
+    "speed": 1.0,
+    "volume_gain_db": 16.0,
+    "adjust_speed": false
   }
 ]

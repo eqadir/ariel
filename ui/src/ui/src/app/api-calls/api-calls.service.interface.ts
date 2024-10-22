@@ -16,5 +16,15 @@
 import { Observable } from 'rxjs';
 
 export interface ApiCalls {
-  hello(): Observable<string>;
+  postToGcs(
+    file: File,
+    folder: string,
+    filename: string,
+    contentType?: string
+  ): Observable<string[]>;
+  getFromGcs(
+    url: string,
+    retryDelay?: number,
+    maxRetries?: number
+  ): Observable<string>;
 }

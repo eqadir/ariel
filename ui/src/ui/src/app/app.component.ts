@@ -33,14 +33,25 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { CONFIG } from '../../../config';
 import { ApiCallsService } from './api-calls/api-calls.service';
 import { Chip, InputChipsComponent } from './input-chips.component';
 
 interface Dubbing {
+  start: number;
+  end: number;
+  path: string;
   text: string;
+  for_dubbing: boolean;
+  speaker_id: string;
+  ssml_gender: string;
   translated_text: string;
-  editing: boolean;
-  // TODO(ehsaanqadir@): Add additional fields like timing etc.
+  assigned_voice: string;
+  pitch: number;
+  speed: number;
+  volume_gain_db: number;
+  adjust_speed: boolean;
+  editing?: boolean;
 }
 
 @Component({
@@ -79,60 +90,141 @@ export class AppComponent {
     { name: 'Standard' },
   ];
   loadingTranslations = false;
+  loadingDubbedVideo = false;
   dubbingCompleted = false;
+  selectedFile: File | null = null;
 
   readonly configPanelOpenState = signal(true);
   readonly videoSettingsPanelOpenState = signal(true);
   dubbedInstances!: Dubbing[];
-  dubbedUrl: string = '/assets/sample_dub.json';
+  dubbedUrl: string = '';
+  gcsFolder: string = '';
 
   constructor(
     // private http: HttpClient,
-    private apiCalls: ApiCallsService,
-    private formBuilder: FormBuilder
+    private apiCalls: ApiCallsService
   ) {}
+
+  onFileSelected(event: Event) {
+    const inputElement = event.target as HTMLInputElement;
+    if (inputElement && inputElement.files && inputElement.files.length > 0) {
+      this.selectedFile = inputElement.files[0];
+    } else {
+      // Handle the case where the input element or files are null/undefined
+      console.error('No file selected or target is not an input element.');
+    }
+  }
+
+  // uploadVideo() {
+  //   this.apiCalls
+  //     .postToGcs(this.selectedFile!, this.gcsFolder, 'input.mp4')
+  //     .subscribe(response => {
+  //       console.log('Upload complete!', response);
+  //     });
+  // }
 
   toggleEdit(dubbing: Dubbing): void {
     dubbing.editing = !dubbing.editing;
   }
 
-  async dubVideo() {
-    await new Promise(r => setTimeout(r, 2000)); // TODO(): Get rid of me.
-    this.dubbingCompleted = true;
-  }
-
   private _formBuilder = inject(FormBuilder);
 
   configFormGroup = this._formBuilder.group({
-    cloudProjectId: ['', Validators.required],
-    geminiApiToken: ['', Validators.required],
-    huggingFaceApiToken: ['', Validators.required],
-    advertiserName: ['', Validators.required],
-    inputVideoFile: ['', Validators.required],
-    outputDirectory: ['', Validators.required],
-    originalLanguage: ['', Validators.required],
-    targetLanguage: ['', Validators.required],
-    numSpeakersSlider: ['', Validators.required],
-    noDubPhrases: ['', Validators.required],
-    diarizationInstructions: ['', Validators.required],
-    translationInstructions: ['', Validators.required],
-    mergeUtterances: ['', Validators.required],
-    minMergeThresholdSlider: ['', Validators.required],
+    input_video: ['', Validators.required],
+    advertiser_name: ['', Validators.required],
+    original_language: ['de-DE', Validators.required],
+    target_language: ['pl-PL', Validators.required],
+    hugging_face_token: ['', Validators.required],
+    number_of_speakers: [''],
+    no_dubbing_phrases: [''],
+    diarization_instructions: [''],
+    translation_instructions: [''],
+    merge_utterances: [''],
+    minimum_merge_threshold: [''],
   });
   secondFormGroup = this._formBuilder.group({
     secondCtrl: ['', Validators.required],
   });
 
-  generateUtterances() {
-    if (this.configFormGroup.valid) {
-      this.loadingTranslations = true;
-      // const configData = this.configFormGroup.value;
-      // const configDataJson = JSON.stringify(configData);
-      // TODO(): Upload video to gcs as well as uploading the configuration data.
-      this.apiCalls.generateUtterances().subscribe(data => {
-        this.dubbedInstances = data as unknown as Dubbing[]; // TODO(): Remove unknown once done with implementing methods.
-        this.loadingTranslations = false;
+  dubVideo() {
+    this.loadingDubbedVideo = true;
+    this.dubbingCompleted = false;
+    // Upload the (updated) utterances to gcs.
+    this.apiCalls
+      .postToGcs(
+        this.jsonFile(
+          JSON.stringify(this.dubbedInstances),
+          'utterances_approved.json'
+        ),
+        this.gcsFolder,
+        'utterances_approved.json'
+      )
+      .subscribe(response => {
+        console.log('Approved utterances upload completed!', response);
+        // Download final video.
+        this.apiCalls
+          .downloadVideo(`${this.gcsFolder}/dubbed_video.mp4`, 15000, 20)
+          .subscribe(response => {
+            console.log('Dubbed video generated!', response);
+            this.loadingDubbedVideo = false;
+            this.dubbingCompleted = true;
+            this.dubbedUrl = URL.createObjectURL(response as unknown as Blob);
+          });
       });
+  }
+
+  removeEmptyKeys(obj: object) {
+    const result: { [key: string]: unknown } = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === 'input_video') {
+        // Skip input_video as backend has own logic for it.
+        continue;
+      }
+      if (value !== '') {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
+  jsonFile(jsonString: string, filename: string): File {
+    return new File([jsonString], filename, {
+      type: 'application/json',
+    });
+  }
+
+  generateUtterances() {
+    if (this.selectedFile && this.configFormGroup.valid) {
+      this.loadingTranslations = true;
+      const configData = this.configFormGroup.value;
+      const configDataJson = JSON.stringify(this.removeEmptyKeys(configData));
+      const configDataFile = this.jsonFile(configDataJson, 'config.json');
+      console.log(
+        `Requested dubbing for video ${this.selectedFile.name} with the following config: ${configDataJson}`
+      );
+      // 1. Upload video to gcs.
+      this.gcsFolder = `${this.selectedFile.name}${CONFIG.videoFolderNameSeparator}${Date.now()}`;
+      this.apiCalls
+        .postToGcs(this.selectedFile!, this.gcsFolder, 'input.mp4')
+        .subscribe(response => {
+          console.log('Video upload completed!', response);
+          const folder = response[0];
+          // 2. If video upload successfull, generate utterances.
+          this.apiCalls
+            .postToGcs(configDataFile, folder, 'config.json')
+            .subscribe(data => {
+              console.log('Configuration upload completed!', data);
+              this.apiCalls
+                .getFromGcs(`${this.gcsFolder}/utterances.json`, 15000, 20)
+                .subscribe(response => {
+                  console.log('Utterances generated!', response);
+                  this.dubbedInstances = JSON.parse(
+                    response
+                  ) as unknown as Dubbing[];
+                  this.loadingTranslations = false;
+                });
+            });
+        });
     } else {
       // TODO(): Config form is invalid. Display error messages.
     }
