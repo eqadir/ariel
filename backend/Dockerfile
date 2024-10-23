@@ -18,4 +18,4 @@ COPY app.py .
 ENV PORT 8080
 
 # Run the web service on container startup.
-CMD exec gunicorn -b 0.0.0.0:$PORT -t 600 -w 1 app:app
+CMD exec gunicorn -b 0.0.0.0:$PORT -t 600 -w 7 app:app
