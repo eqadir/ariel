@@ -74,6 +74,9 @@ if "${CONFIGURE_APIS_AND_ROLES}"; then
   printf "Operation finished successfully!\n"
 fi
 
+printf "Copying Ariel module sources to enable cutting-edge build"
+./setup_dev.sh
+
 if $USE_CLOUD_BUILD; then
   printf "\nINFO - Using Cloud Build to deploy from source"
     gcloud beta run deploy ariel-process \

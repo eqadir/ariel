@@ -12,6 +12,7 @@ COPY requirements.txt .
 RUN pip install -r ./requirements.txt --break-system-packages
 
 COPY app.py .
+COPY ariel .
 
 # Service must listen to $PORT environment variable.
 # This default value facilitates local development.

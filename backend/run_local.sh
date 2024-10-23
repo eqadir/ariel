@@ -1,4 +1,5 @@
 #!/bin/bash
+./setup_dev.sh
 docker build -t gtech/ariel .
 #run cloud-run ready docker packaged instance on port 8888
 docker run -it \

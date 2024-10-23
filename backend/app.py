@@ -12,8 +12,16 @@ import traceback
 import base64
 import shutil
 from pathlib import Path
-from ariel.dubbing import Dubber, PreprocessingArtifacts
-from ariel import translation
+if __package__ is None or __package__ == '':
+  # uses current directory visibility
+  from ariel.dubbing import Dubber, PreprocessingArtifacts
+  from ariel import translation
+else:
+  # uses current package visibility
+  from .ariel.dubbing import Dubber, PreprocessingArtifacts
+  from .ariel import translation
+# from .ariel.dubbing import Dubber, PreprocessingArtifacts
+# from .ariel import translation
 
 if __name__ == "__main__":
 	logging.basicConfig()
