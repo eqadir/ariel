@@ -26,6 +26,7 @@ if torch.cuda.is_available():
 	logging.info("GPU available, using cuda")
 
 CONFIG_FILE_NAME = "config.json"
+INPUT_FILE_NAME = "input.mp4"
 INITIAL_UTTERANCES_FILE_NAME = "utterances.json"
 PREVIEW_UTTERANCES_FILE_NAME = "utterances_preview.json"
 APPROVED_UTTERANCE_FILE_NAME = "utterances_approved.json"
@@ -112,7 +113,7 @@ class WorkdirSynchronizer:
 
 	def _download_root_files(self):
 		files_to_download = list(TRIGGER_FILES)
-		files_to_download.append("input.mp4")
+		files_to_download.append(INPUT_FILE_NAME)
 		for file_name in files_to_download:
 			local_path = f"{self.local_path}/{file_name}"
 			gcs_path = f'{self.gcs_path}/{file_name}'
@@ -240,7 +241,7 @@ class GcpDubbingProcessor:
 			return dubber_params
 
 	def inject_required_dubber_params(self):
-		input_video_local_path = f"{self.local_path}/input.mp4"
+		input_video_local_path = f"{self.local_path}/{INPUT_FILE_NAME}"
 		self.dubber_params["input_file"] = input_video_local_path
 		self.dubber_params["output_directory"] = f"{self.local_path}/{WORKDIR_NAME}"
 		self.dubber_params["gcp_project_id"] = self.project_id
