@@ -21,6 +21,8 @@ else
   test $? -eq 0 || exit
   printf "\nINFO - Bucket '$GCS_BUCKET' created successfully in location '$GCP_REGION'!\n"
 fi
+printf "\nINFO - Setting 7 days retention policy on the bucket"
+gcloud storage buckets update gs://$GCS_BUCKET --lifecycle-file=bucket_retention_policy.json
 
 if "${CONFIGURE_APIS_AND_ROLES}"; then
   printf "\nINFO - Enabling GCP APIs...\n"
