@@ -100,60 +100,13 @@ class WorkdirSynchronizer:
 	def download_workdir(self):
 		self._clean()
 		logging.info("Downloading working directory files from GCS")
-		# gcs_path = f"{self.gcs_path}/{WORKDIR_NAME}"
-		command = f"gsutil -m rsync -r gs://{self.bucket.name}/{self.gcs_path} {self.local_path}"
+		command = f"gcloud storage rsync -r --delete-unmatched-destination-objects gs://{self.bucket.name}/{self.gcs_path} {self.local_path}"
 		os.system(command)
-		# prefix = f'{self.gcs_path}/{WORKDIR_NAME}/'
-		# for blob in storage_client.list_blobs(self.bucket.name, prefix=prefix):
-		# 	if blob.name.endswith("/"):
-		# 		continue
-		# 	gcs_path_under_workdir = blob.name.replace(prefix,'')
-		# 	local_path = f'{self.local_output_path}/{gcs_path_under_workdir}'
-		# 	local_directory = "/".join(local_path.split("/")[0:-1])
-		# 	Path(local_directory).mkdir(parents=True, exist_ok=True)
-		# 	logging.info(f"Downloading {blob.name} to {local_path}")
-		# 	blob.download_to_filename(local_path)
-		# self._download_root_files()
-
-	# def _download_root_files(self):
-	# 	files_to_download = list(TRIGGER_FILES)
-	# 	files_to_download.append("input.mp4")
-	# 	for file_name in files_to_download:
-	# 		local_path = f"{self.local_path}/{file_name}"
-	# 		gcs_path = f'{self.gcs_path}/{file_name}'
-	# 		blob = self.bucket.blob(gcs_path)
-	# 		if blob.exists():
-	# 			logging.info(f"Downloading {blob.name} to {local_path}")
-	# 			blob.download_to_filename(local_path)
 
 	def upload_workdir(self):
 		logging.info("Uploading all working directory files to GCS")
-		command = f"gsutil -m rsync -r {self.local_output_path} gs://{self.bucket.name}/{self.gcs_path}/{WORKDIR_NAME}"
+		command = f"gcloud storage rsync -r --delete-unmatched-destination-objects {self.local_path} gs://{self.bucket.name}/{self.gcs_path}"
 		os.system(command)
-		# mediaFileList = glob.glob(f'{self.local_output_path}/**', recursive=True)
-		# for file_path in [file_path for file_path in mediaFileList if os.path.isfile(file_path)]:
-		# 	file_path_under_local_dir = file_path.replace(self.local_output_path, WORKDIR_NAME)
-		# 	gcs_file_path = f'{self.gcs_path}/{file_path_under_local_dir}'
-		# 	logging.info(f"Uploading file {file_path_under_local_dir} to GCS as {gcs_file_path}")
-		# 	self.bucket.blob(gcs_file_path).upload_from_filename(
-		# 		file_path, client=None)
-		self._upload_root_files()
-
-	def _upload_root_files(self):
-		files_to_upload = ["dubbed_video.mp4", "utterances.json"]
-		for file in files_to_upload:
-			local_path = f"{self.local_path}/{file}"
-			if os.path.isfile(local_path):
-				gcs_path = f"{self.gcs_path}/{file}"
-				logging.info(f"Uploading file {local_path} to GCS as {gcs_path}")
-				self.bucket.blob(gcs_path).upload_from_filename(local_path, client=None)
-		# special case for deletion of utterances_preview.json
-		# that signals to the GUI that new dubbed chunks and utterances.json have been generated
-		# for preview
-		if not os.path.exists(f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}"):
-			preview_blob = self.bucket.blob(f"{self.gcs_path}/{PREVIEW_UTTERANCES_FILE_NAME}")
-			if preview_blob.exists():
-				preview_blob.delete()
 
 class DummyProgressBar:
 	def update(param=None):
