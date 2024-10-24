@@ -41,3 +41,13 @@ Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To u
 ## Further help
 
 To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+# Deployment and initial run of Ariel UI
+* npx @google/aside init (select Angular, don't overwrite anything)
+  this will create clasp.json and other files needed to deploy the UI
+rm -rf test
+npm install
+
+npm run deploy
+## One-time after initial deployment
+in Apps Script, do one deployment (type: web app)
