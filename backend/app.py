@@ -76,6 +76,7 @@ def process_event(project_id, region, bucket, trigger_file_path):
 		logging.error(traceback.format_exc())
 
 class WorkdirSynchronizer:
+
 	def __init__(
 		self,
 		bucket_name: str,
@@ -99,38 +100,43 @@ class WorkdirSynchronizer:
 	def download_workdir(self):
 		self._clean()
 		logging.info("Downloading working directory files from GCS")
-		prefix = f'{self.gcs_path}/{WORKDIR_NAME}/'
-		for blob in storage_client.list_blobs(self.bucket.name, prefix=prefix):
-			if blob.name.endswith("/"):
-				continue
-			gcs_path_under_workdir = blob.name.replace(prefix,'')
-			local_path = f'{self.local_output_path}/{gcs_path_under_workdir}'
-			local_directory = "/".join(local_path.split("/")[0:-1])
-			Path(local_directory).mkdir(parents=True, exist_ok=True)
-			logging.info(f"Downloading {blob.name} to {local_path}")
-			blob.download_to_filename(local_path)
-		self._download_root_files()
+		# gcs_path = f"{self.gcs_path}/{WORKDIR_NAME}"
+		command = f"gsutil -m rsync -r gs://{self.bucket.name}/{self.gcs_path} {self.local_path}"
+		os.system(command)
+		# prefix = f'{self.gcs_path}/{WORKDIR_NAME}/'
+		# for blob in storage_client.list_blobs(self.bucket.name, prefix=prefix):
+		# 	if blob.name.endswith("/"):
+		# 		continue
+		# 	gcs_path_under_workdir = blob.name.replace(prefix,'')
+		# 	local_path = f'{self.local_output_path}/{gcs_path_under_workdir}'
+		# 	local_directory = "/".join(local_path.split("/")[0:-1])
+		# 	Path(local_directory).mkdir(parents=True, exist_ok=True)
+		# 	logging.info(f"Downloading {blob.name} to {local_path}")
+		# 	blob.download_to_filename(local_path)
+		# self._download_root_files()
 
-	def _download_root_files(self):
-		files_to_download = list(TRIGGER_FILES)
-		files_to_download.append(INPUT_FILE_NAME)
-		for file_name in files_to_download:
-			local_path = f"{self.local_path}/{file_name}"
-			gcs_path = f'{self.gcs_path}/{file_name}'
-			blob = self.bucket.blob(gcs_path)
-			if blob.exists():
-				logging.info(f"Downloading {blob.name} to {local_path}")
-				blob.download_to_filename(local_path)
+	# def _download_root_files(self):
+	# 	files_to_download = list(TRIGGER_FILES)
+	# 	files_to_download.append("input.mp4")
+	# 	for file_name in files_to_download:
+	# 		local_path = f"{self.local_path}/{file_name}"
+	# 		gcs_path = f'{self.gcs_path}/{file_name}'
+	# 		blob = self.bucket.blob(gcs_path)
+	# 		if blob.exists():
+	# 			logging.info(f"Downloading {blob.name} to {local_path}")
+	# 			blob.download_to_filename(local_path)
 
 	def upload_workdir(self):
 		logging.info("Uploading all working directory files to GCS")
-		mediaFileList = glob.glob(f'{self.local_output_path}/**', recursive=True)
-		for file_path in [file_path for file_path in mediaFileList if os.path.isfile(file_path)]:
-			file_path_under_local_dir = file_path.replace(self.local_output_path, WORKDIR_NAME)
-			gcs_file_path = f'{self.gcs_path}/{file_path_under_local_dir}'
-			logging.info(f"Uploading file {file_path_under_local_dir} to GCS as {gcs_file_path}")
-			self.bucket.blob(gcs_file_path).upload_from_filename(
-				file_path, client=None)
+		command = f"gsutil -m rsync -r {self.local_output_path} gs://{self.bucket.name}/{self.gcs_path}/{WORKDIR_NAME}"
+		os.system(command)
+		# mediaFileList = glob.glob(f'{self.local_output_path}/**', recursive=True)
+		# for file_path in [file_path for file_path in mediaFileList if os.path.isfile(file_path)]:
+		# 	file_path_under_local_dir = file_path.replace(self.local_output_path, WORKDIR_NAME)
+		# 	gcs_file_path = f'{self.gcs_path}/{file_path_under_local_dir}'
+		# 	logging.info(f"Uploading file {file_path_under_local_dir} to GCS as {gcs_file_path}")
+		# 	self.bucket.blob(gcs_file_path).upload_from_filename(
+		# 		file_path, client=None)
 		self._upload_root_files()
 
 	def _upload_root_files(self):
@@ -258,7 +264,6 @@ class GcpDubbingProcessor:
 		self.dubber_params['clean_up'] = False
 
 if __name__ == "__main__":
-	# process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/config.json")
-	process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/utterances_preview.json")
+	process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/config.json")
+	# process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/utterances_preview.json")
 	# process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/utterances_approved.json")
-
