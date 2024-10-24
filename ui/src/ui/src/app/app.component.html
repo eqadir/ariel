@@ -37,6 +37,9 @@ limitations under the License.
         (change)="onFileSelected($event)"
         required
       />
+      @if (selectedFile && selectedFileUrl !== '') {
+        <video [src]="selectedFileUrl" height="300" controls></video>
+      }
       <div>
         <button mat-button matStepperNext type="button">Next</button>
       </div>
@@ -381,6 +384,7 @@ limitations under the License.
     }
     @if (dubbingCompleted && dubbedUrl !== '') {
       <p>Video generation is completed.</p>
+      <video [src]="dubbedUrl" height="300" controls></video>
       <a mat-button href="{{ dubbedUrl }}" download="dubbed_video.mp4"
         >Download video</a
       >

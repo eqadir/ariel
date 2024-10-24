@@ -93,6 +93,7 @@ export class AppComponent {
   loadingDubbedVideo = false;
   dubbingCompleted = false;
   selectedFile: File | null = null;
+  selectedFileUrl: string = '';
 
   readonly configPanelOpenState = signal(true);
   readonly videoSettingsPanelOpenState = signal(true);
@@ -109,6 +110,7 @@ export class AppComponent {
     const inputElement = event.target as HTMLInputElement;
     if (inputElement && inputElement.files && inputElement.files.length > 0) {
       this.selectedFile = inputElement.files[0];
+      this.selectedFileUrl = URL.createObjectURL(this.selectedFile);
     } else {
       // Handle the case where the input element or files are null/undefined
       console.error('No file selected or target is not an input element.');
