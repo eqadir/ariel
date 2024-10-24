@@ -140,6 +140,11 @@ class WorkdirSynchronizer:
 				gcs_path = f"{self.gcs_path}/{file}"
 				logging.info(f"Uploading file {local_path} to GCS as {gcs_path}")
 				self.bucket.blob(gcs_path).upload_from_filename(local_path, client=None)
+		# special case for deletion of utterances_preview.json
+		# that signals to the GUI that new dubbed chunks and utterances.json have been generated
+		# for preview
+		if not os.path.exists(f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}"):
+			self.bucket.blob(f"{self.gcs_path}/{PREVIEW_UTTERANCES_FILE_NAME}").delete()
 
 class DummyProgressBar:
 	def update(param=None):
@@ -177,7 +182,7 @@ class GcpDubbingProcessor:
 		if file_name == CONFIG_FILE_NAME:
 			self._generate_utterances()
 		elif file_name == PREVIEW_UTTERANCES_FILE_NAME:
-			self._render_audio_chunks()
+			self._render_preview()
 		elif file_name == APPROVED_UTTERANCE_FILE_NAME:
 			self._render_dubbed_video()
 		else:
@@ -189,15 +194,17 @@ class GcpDubbingProcessor:
 		self.dubber.run_translation()
 		self.dubber.run_configure_text_to_speech()
 
-		with open(f"{self.local_path}/{INITIAL_UTTERANCES_FILE_NAME}", "w") as fp:
-			json.dump(self.dubber.utterance_metadata, fp)
+		self._save_current_utterances()
 
-	def _render_audio_chunks(self):
-		with open(f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}") as f:
+	def _render_preview(self):
+		preview_json_file_path = f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}"
+		with open(preview_json_file_path) as f:
 			utterance_metadata = json.load(f)
 			self.dubber.utterance_metadata = utterance_metadata
 			self.dubber.preprocessing_output = self.preprocessing_artifacts
 			self.dubber.run_text_to_speech()
+		self._save_current_utterances()
+		os.remove(preview_json_file_path)
 
 	def _render_dubbed_video(self):
 		with open(f"{self.local_path}/{APPROVED_UTTERANCE_FILE_NAME}") as f:
@@ -209,18 +216,22 @@ class GcpDubbingProcessor:
 			self.dubber.run_postprocessing()
 			self.dubber.run_save_utterance_metadata()
 			self.dubber.postprocessing_output.utterance_metadata = (
-        self.dubber.save_utterance_metadata_output
-    	)
+				self.dubber.save_utterance_metadata_output
+				)
 			subtitles_path = translation.save_srt_subtitles(
-        utterance_metadata=self.dubber.utterance_metadata,
-        output_directory=os.path.join(self.dubber.output_directory, WORKDIR_NAME),
-    	)
+				utterance_metadata=self.dubber.utterance_metadata,
+				output_directory=os.path.join(self.dubber.output_directory, WORKDIR_NAME),
+				)
 			self.dubber.postprocessing_output.subtitles = subtitles_path
 			if self.dubber.elevenlabs_clone_voices and self.dubber.elevenlabs_remove_cloned_voices:
 				self.dubber.text_to_speech.remove_cloned_elevenlabs_voices()
 			output_video_file = self.dubber.postprocessing_output.video_file
 
 			shutil.copyfile(output_video_file, f"{self.local_path}/{DUBBED_VIDEO_FILE_NAME}")
+
+	def _save_current_utterances(self):
+		with open(f"{self.local_path}/{INITIAL_UTTERANCES_FILE_NAME}", "w") as fp:
+			json.dump(self.dubber.utterance_metadata, fp)
 
 	def read_dubber_params_from_config(self):
 		with open(f"{self.local_path}/{CONFIG_FILE_NAME}") as f:
