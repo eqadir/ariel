@@ -12,7 +12,7 @@ import traceback
 import base64
 import shutil
 from pathlib import Path
-from ariel.dubbing import Dubber, PreprocessingArtifacts
+from ariel.dubbing import Dubber, PreprocessingArtifacts, get_safety_settings
 from ariel import translation
 
 if __name__ == "__main__":
@@ -166,7 +166,7 @@ class GcpDubbingProcessor:
 		self.region = region
 
 		self.dubber_params = self.read_dubber_params_from_config()
-		self.inject_required_dubber_params()
+		self.enrich_dubber_params()
 		logging.info(f'Dubber initial parameters: {self.dubber_params}')
 		local_output_path = f"{self.local_path}/{WORKDIR_NAME}"
 		self.preprocessing_artifacts = PreprocessingArtifacts(
@@ -241,6 +241,11 @@ class GcpDubbingProcessor:
 			dubber_params = json.load(f)
 			logging.info(f"Input Parameters: {dubber_params}")
 			return dubber_params
+
+	def enrich_dubber_params(self):
+		self.inject_required_dubber_params()
+		safety_level = self.dubber_params["safety_settings"]
+		self.dubber_params["safety_settings"] = get_safety_settings(safety_level)
 
 	def inject_required_dubber_params(self):
 		input_video_local_path = f"{self.local_path}/{INPUT_FILE_NAME}"
