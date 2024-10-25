@@ -10,6 +10,8 @@ RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tm
   && /usr/local/gcloud/google-cloud-sdk/install.sh
 ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
 
+ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
+
 WORKDIR /ariel
 COPY requirements.txt .
 RUN pip install -r ./requirements.txt
