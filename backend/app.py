@@ -145,7 +145,9 @@ class WorkdirSynchronizer:
 		# that signals to the GUI that new dubbed chunks and utterances.json have been generated
 		# for preview
 		if not os.path.exists(f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}"):
-			self.bucket.blob(f"{self.gcs_path}/{PREVIEW_UTTERANCES_FILE_NAME}").delete()
+			preview_blob = self.bucket.blob(f"{self.gcs_path}/{PREVIEW_UTTERANCES_FILE_NAME}")
+			if preview_blob.exists():
+				preview_blob.delete()
 
 class DummyProgressBar:
 	def update(param=None):
