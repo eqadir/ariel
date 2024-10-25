@@ -224,6 +224,7 @@ class GcpDubbingProcessor:
 			subtitles_path = translation.save_srt_subtitles(
 				utterance_metadata=self.dubber.utterance_metadata,
 				output_directory=os.path.join(self.dubber.output_directory, WORKDIR_NAME),
+				target_language=self.dubber.target_language
 				)
 			self.dubber.postprocessing_output.subtitles = subtitles_path
 			if self.dubber.elevenlabs_clone_voices and self.dubber.elevenlabs_remove_cloned_voices:
