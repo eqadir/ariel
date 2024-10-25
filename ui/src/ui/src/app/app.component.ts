@@ -30,6 +30,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -76,6 +77,7 @@ interface Dubbing {
     MatStepperModule,
     ReactiveFormsModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
@@ -120,13 +122,10 @@ export class AppComponent {
     }
   }
 
-  // uploadVideo() {
-  //   this.apiCalls
-  //     .postToGcs(this.selectedFile!, this.gcsFolder, 'input.mp4')
-  //     .subscribe(response => {
-  //       console.log('Upload complete!', response);
-  //     });
-  // }
+  playAudio(url: string) {
+    const audio = new Audio(url);
+    audio.play();
+  }
 
   toggleEdit(dubbing: Dubbing): void {
     dubbing.editing = !dubbing.editing;
@@ -163,7 +162,7 @@ export class AppComponent {
     elevenlabs_clone_voices: [false],
     elevenlabs_remove_cloned_voices: [false],
   });
-  secondFormGroup = this._formBuilder.group({
+  translationsFormGroup = this._formBuilder.group({
     secondCtrl: ['', Validators.required],
   });
 

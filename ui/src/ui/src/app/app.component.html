@@ -432,66 +432,173 @@ limitations under the License.
       </div>
     </form>
   </mat-step>
-  <mat-step [stepControl]="secondFormGroup">
-    <form [formGroup]="secondFormGroup">
-      <ng-template matStepLabel>Review translations</ng-template>
-      <div class="mat-expansion-panel-body">
-        <div class="container">
-          @if (loadingTranslations) {
-            <mat-spinner></mat-spinner>
-            This could take up to 5 minutes...
-          } @else {
-            @for (dubbing of dubbedInstances; track dubbing) {
-              <div class="row">
-                <div class="col">
-                  <mat-card>
-                    <mat-card-header>
-                      <!-- <mat-card-title>dubbing.</mat-card-title> -->
-                    </mat-card-header>
-                    <mat-card-content>
-                      <p>{{ dubbing.text }}</p>
-                    </mat-card-content>
-                  </mat-card>
-                </div>
-                <div class="col">
-                  <mat-card>
-                    <mat-card-header>
-                      <!-- <mat-card-title>German</mat-card-title> -->
-                    </mat-card-header>
-                    <mat-card-content>
-                      @if (dubbing.editing) {
-                        <mat-form-field class="full-width">
-                          <textarea
-                            matInput
-                            formControlName="secondCtrl"
-                            [(ngModel)]="dubbing.translated_text"
-                          ></textarea>
-                        </mat-form-field>
-                      } @else {
-                        <p>{{ dubbing.translated_text }}</p>
-                        <button
-                          mat-icon-button
-                          color="primary"
-                          (click)="toggleEdit(dubbing)"
-                        >
-                          <mat-icon>edit</mat-icon>
-                        </button>
-                      }
-                    </mat-card-content>
-                  </mat-card>
-                </div>
+  <mat-step [stepControl]="translationsFormGroup">
+    <!-- <form [formGroup]="translationsFormGroup"> -->
+    <ng-template matStepLabel>Review translations</ng-template>
+    <div class="mat-expansion-panel-body">
+      <div class="container">
+        @if (loadingTranslations) {
+          <mat-spinner></mat-spinner>
+          This could take up to 5 minutes...
+        } @else {
+          <div class="row">
+            <div class="col">
+              <span style="font-weight: bold">Original language</span>
+            </div>
+            <div class="col">
+              <span style="font-weight: bold">Translated language</span>
+            </div>
+          </div>
+          @for (dubbing of dubbedInstances; track dubbing) {
+            <div class="row">
+              <div class="col">
+                <mat-card>
+                  <mat-card-header>
+                    <!-- <mat-card-title>dubbing.</mat-card-title> -->
+                  </mat-card-header>
+                  <mat-card-content>
+                    <p>{{ dubbing.text }}</p>
+                  </mat-card-content>
+                </mat-card>
               </div>
-            }
+              <div class="col">
+                <mat-card>
+                  <mat-card-content>
+                    @if (!dubbing.editing) {
+                      <div class="audio-container">
+                        <mat-icon
+                          (click)="playAudio(dubbing.path)"
+                          class="speaker-icon"
+                          >volume_up</mat-icon
+                        >
+                      </div>
+                      <div class="translated-text">
+                        {{ dubbing.translated_text }}
+                      </div>
+                      <div>
+                        <span class="label">Start:</span> {{ dubbing.start }}
+                      </div>
+                      <div>
+                        <span class="label">End:</span> {{ dubbing.end }}
+                      </div>
+                      <div>
+                        <span class="label">For Dubbing:</span>
+                        {{ dubbing.for_dubbing }}
+                      </div>
+                      <div>
+                        <span class="label">Speaker ID:</span>
+                        {{ dubbing.speaker_id }}
+                      </div>
+                      <div>
+                        <span class="label">SSML Gender:</span>
+                        {{ dubbing.ssml_gender }}
+                      </div>
+                      <div>
+                        <span class="label">Assigned Voice:</span>
+                        {{ dubbing.assigned_voice }}
+                      </div>
+                      <div>
+                        <span class="label">Pitch:</span> {{ dubbing.pitch }}
+                      </div>
+                      <div>
+                        <span class="label">Speed:</span> {{ dubbing.speed }}
+                      </div>
+                      <div>
+                        <span class="label">Volume Gain (dB):</span>
+                        {{ dubbing.volume_gain_db }}
+                      </div>
+                      <div>
+                        <span class="label">Adjust Speed:</span>
+                        {{ dubbing.adjust_speed }}
+                      </div>
+                    } @else {
+                      <mat-form-field class="full-width edit-textarea">
+                        <mat-label>Translated text</mat-label>
+                        <textarea
+                          matInput
+                          [(ngModel)]="dubbing.translated_text"
+                        ></textarea>
+                      </mat-form-field>
+                      <mat-form-field class="full-width">
+                        <mat-label>Start</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          [(ngModel)]="dubbing.start"
+                        />
+                      </mat-form-field>
+                      <mat-form-field class="full-width">
+                        <mat-label>End</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          [(ngModel)]="dubbing.end"
+                        />
+                      </mat-form-field>
+                      <mat-checkbox [(ngModel)]="dubbing.for_dubbing"
+                        >Use for dubbing</mat-checkbox
+                      >
+                      <mat-form-field class="full-width">
+                        <mat-label>Speaker ID</mat-label>
+                        <input matInput [(ngModel)]="dubbing.speaker_id" />
+                      </mat-form-field>
+                      <mat-form-field class="full-width">
+                        <mat-label>SSML Gender</mat-label>
+                        <mat-select [(ngModel)]="dubbing.ssml_gender">
+                          <mat-option value="male"> Male </mat-option>
+                          <mat-option value="female">Female</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field class="full-width">
+                        <mat-label>Assigned Voice</mat-label>
+                        <input matInput [(ngModel)]="dubbing.assigned_voice" />
+                      </mat-form-field>
+                      <mat-form-field class="full-width">
+                        <mat-label>Pitch</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          [(ngModel)]="dubbing.pitch"
+                        />
+                      </mat-form-field>
+                      <mat-form-field class="full-width">
+                        <mat-label>Speed</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          [(ngModel)]="dubbing.speed"
+                        />
+                      </mat-form-field>
+                      <mat-form-field class="full-width">
+                        <mat-label>Volume Gain (dB)</mat-label>
+                        <input
+                          matInput
+                          type="number"
+                          [(ngModel)]="dubbing.volume_gain_db"
+                        />
+                      </mat-form-field>
+                      <mat-checkbox [(ngModel)]="dubbing.adjust_speed"
+                        >Adjust speed</mat-checkbox
+                      >
+                    }
+                  </mat-card-content>
+                  <mat-card-actions align="end">
+                    <button mat-button (click)="toggleEdit(dubbing)">
+                      {{ dubbing.editing ? 'Save' : 'Edit' }}
+                    </button>
+                  </mat-card-actions>
+                </mat-card>
+              </div>
+            </div>
           }
-        </div>
+        }
       </div>
-      <div>
-        <button mat-button matStepperPrevious>Back</button>
-        <button mat-button matStepperNext (click)="dubVideo()">
-          Dub video
-        </button>
-      </div>
-    </form>
+    </div>
+    <div>
+      <button mat-button matStepperPrevious>Back</button>
+      <button mat-button matStepperNext (click)="dubVideo()">Dub video</button>
+    </div>
+    <!-- </form> -->
   </mat-step>
   <mat-step>
     <ng-template matStepLabel>Download videos</ng-template>

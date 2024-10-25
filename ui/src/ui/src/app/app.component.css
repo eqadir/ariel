@@ -79,3 +79,34 @@ limitations under the License.
 .full-width {
   width: 100%;
 }
+
+.audio-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.speaker-icon {
+  cursor: pointer;
+  margin-right: 5px;
+}
+
+.label {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.translated-text {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.edit-textarea {
+  min-height: fit-content;
+  overflow: hidden;
+  resize: none;
+}
+
+.mat-card-content > div {
+  margin-bottom: 8px;
+}
