@@ -157,7 +157,7 @@ export class AppComponent {
     top_p: [0.95],
     top_k: [40],
     max_output_tokens: [8192],
-    gemini_safety_settings: ['Medium'],
+    safety_settings: ['Medium'],
     use_elevenlabs: [false],
     elevenlabs_token: [''],
     elevenlabs_clone_voices: [false],
