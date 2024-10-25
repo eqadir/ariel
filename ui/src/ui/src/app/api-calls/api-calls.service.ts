@@ -116,7 +116,7 @@ export class ApiCallsService implements ApiCalls {
     );
   }
 
-  downloadVideo(url: string, retryDelay = 0, maxRetries = 0): Observable<Blob> {
+  downloadBlob(url: string, retryDelay = 0, maxRetries = 0): Observable<Blob> {
     const gcsUrl = `${CONFIG.cloudStorage.endpointBase}/b/${CONFIG.cloudStorage.bucket}/o/${encodeURIComponent(url)}?alt=media`;
 
     return this.getUserAuthToken().pipe(

@@ -47,6 +47,7 @@ interface Dubbing {
   for_dubbing: boolean;
   speaker_id: string;
   ssml_gender: string;
+  dubbed_path: string;
   translated_text: string;
   assigned_voice: string;
   pitch: number;
@@ -117,14 +118,24 @@ export class AppComponent {
       this.selectedFile = inputElement.files[0];
       this.selectedFileUrl = URL.createObjectURL(this.selectedFile);
     } else {
-      // Handle the case where the input element or files are null/undefined
+      // Handle the case where the input element or files are null/undefined.
       console.error('No file selected or target is not an input element.');
     }
   }
 
   playAudio(url: string) {
-    const audio = new Audio(url);
-    audio.play();
+    console.log(`Received request to play audio from ${url}`);
+    // Remove /tmp paths from the url string.
+    if (url.startsWith('/tmp/ariel/')) {
+      url = url.replace('/tmp/ariel/', '');
+      // Build gcs audio path and fetch file.
+      this.apiCalls.downloadBlob(`${url}`, 0, 0).subscribe(response => {
+        console.log('Audio snippet fetched!', response);
+        const audioUrl = URL.createObjectURL(response as unknown as Blob);
+        const audio = new Audio(audioUrl);
+        audio.play();
+      });
+    }
   }
 
   toggleEdit(dubbing: Dubbing): void {
@@ -186,7 +197,7 @@ export class AppComponent {
     if (value) {
       chipsCollection.update(chips => [...chips, value]);
     }
-    // Clear the input value
+    // Clear the input value.
     event.chipInput!.clear();
   }
 
@@ -207,7 +218,7 @@ export class AppComponent {
         console.log('Approved utterances upload completed!', response);
         // Download final video.
         this.apiCalls
-          .downloadVideo(`${this.gcsFolder}/dubbed_video.mp4`, 15000, 20)
+          .downloadBlob(`${this.gcsFolder}/dubbed_video.mp4`, 15000, 20)
           .subscribe(response => {
             console.log('Dubbed video generated!', response);
             this.loadingDubbedVideo = false;

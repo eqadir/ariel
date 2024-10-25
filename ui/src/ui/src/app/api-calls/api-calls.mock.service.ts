@@ -35,8 +35,26 @@ export class ApiCallsService implements ApiCalls {
       setTimeout(() => {
         this.ngZone.run(async () => {
           subscriber.next(
-            await this.loadLocalFile('/assets/sample_utterances.json')
+            await this.loadLocalJsonFile('/assets/sample_utterances.json')
           );
+          subscriber.complete();
+        });
+      }, 2000);
+    });
+  }
+
+  downloadBlob(data: string, retryDelay = 0, maxRetries = 0): Observable<Blob> {
+    return new Observable(subscriber => {
+      console.log(
+        `Fake downloading blob with the following settings: ${data}, Retrydelay: ${retryDelay}, MaxRetries: ${maxRetries}`
+      );
+      setTimeout(() => {
+        this.ngZone.run(async () => {
+          const localFile = data.endsWith('.mp4')
+            ? '/assets/sample_video.mp4'
+            : '/assets/sample_audio_chunk.mp3';
+
+          subscriber.next(await this.loadLocalBlob(localFile));
           subscriber.complete();
         });
       }, 2000);
@@ -55,9 +73,16 @@ export class ApiCallsService implements ApiCalls {
     return of([folder, filename]);
   }
 
-  async loadLocalFile(path: string) {
+  async loadLocalJsonFile(path: string) {
     const data = await lastValueFrom(
       this.httpClient.get(path, { responseType: 'text' })
+    );
+    return data;
+  }
+
+  async loadLocalBlob(path: string) {
+    const data = await lastValueFrom(
+      this.httpClient.get(path, { responseType: 'blob' })
     );
     return data;
   }

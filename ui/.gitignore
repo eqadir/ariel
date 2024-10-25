@@ -5,5 +5,3 @@ build/
 .clasp*.json
 *.tgz
 .vscode/
-*.mp3
-*.mp4
