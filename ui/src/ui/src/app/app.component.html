@@ -54,6 +54,7 @@ limitations under the License.
           matInput
           placeholder="Generate a token at HuggingFace"
           formControlName="hugging_face_token"
+          autocomplete="on"
           required
         />
       </mat-form-field>
@@ -200,73 +201,59 @@ limitations under the License.
           formControlName="number_of_speakers"
         />
       </mat-slider>
-      <input-chips class="full-width" [(chips)]="preferredVoices">
-      </input-chips>
-      <!-- <input-chips [(chips)]="preferredVoices"> </input-chips> -->
-      <!-- <mat-form-field class="full-width">
-      <mat-label>Preferred voices</mat-label>
-      <mat-chip-grid
-        #chipGrid
-        aria-label="Enter your preferred voices"
-        matTooltip="Preferred voice names for text-to-speech (e.g., 'Wavenet' for Google's TTS or 'Calllum' for ElevenLabs"
-      >
-        @for (voice of preferredVoices(); track voice) {
-          <mat-chip-row
-            (removed)="remove(voice)"
-            [editable]="true"
-            (edited)="edit(voice, $event)"
-            [aria-description]="'press enter to edit ' + voice.item"
-          >
-            {{ voice.item }}
-            <button matChipRemove [attr.aria-label]="'remove ' + voice.item">
-              <mat-icon>cancel</mat-icon>
-            </button>
-          </mat-chip-row>
-        }
+      <mat-form-field class="full-width">
+        <mat-label>Assigned voices override</mat-label>
+        <textarea
+          matInput
+          matTooltip="A mapping between unique speaker IDs and the full name of their assigned voices."
+          placeholder="E.g. {'speaker_01':'en-US-Casual-K'} or {'speaker_01': 'Charlie'}"
+          formControlName="assigned_voices_override"
+          autocomplete="on"
+        ></textarea>
+      </mat-form-field>
+      <mat-form-field class="full-width">
+        <mat-label>Preferred voices</mat-label>
+        <mat-chip-grid
+          #preferredVoicesChipGrid
+          aria-label="Enter preferred voices"
+          formControlName="preferred_voices"
+        >
+          @for (voice of preferredVoices(); track voice) {
+            <mat-chip-row (removed)="removeChipEntry(preferredVoices, voice)">
+              {{ voice }}
+              <button matChipRemove aria-label="'remove ' + voice">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </mat-chip-row>
+          }
+        </mat-chip-grid>
         <input
-          placeholder="Add voice..."
-          [matChipInputFor]="chipGrid"
-          [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
-          [matChipInputAddOnBlur]="addOnBlur"
-          (matChipInputTokenEnd)="add($event)"
+          placeholder="Add preferred voice.."
+          [matChipInputFor]="preferredVoicesChipGrid"
+          (matChipInputTokenEnd)="addChipEntry(preferredVoices, $event)"
         />
-      </mat-chip-grid>
-    </mat-form-field> -->
-      <!-- <mat-form-field class="full-width">
-      <mat-label>Exclude dubbing phrases</mat-label>
-      <mat-chip-grid
-        #chipGrid
-        aria-label="Enter phrases to exclude in the dubbing process"
-        matTooltip="These phrases will be excluded in the dubbing process and the original utterance will be used instead."
-      >
-        @for (phrase of noDubPhrases(); track phrase) {
-          <mat-chip-row
-            (removed)="remove(phrase)"
-            [editable]="true"
-            (edited)="edit(phrase, $event)"
-            [aria-description]="'press enter to edit ' + phrase.item"
-          >
-            {{ phrase.item }}
-            <button matChipRemove [attr.aria-label]="'remove ' + phrase.item">
-              <mat-icon>cancel</mat-icon>
-            </button>
-          </mat-chip-row>
-        }
-        <input
-          placeholder="Add phrase..."
-          [matChipInputFor]="chipGrid"
-          [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
-          [matChipInputAddOnBlur]="addOnBlur"
-          (matChipInputTokenEnd)="add($event)"
-        />
-      </mat-chip-grid>
-    </mat-form-field> -->
+      </mat-form-field>
       <mat-form-field class="full-width">
         <mat-label>No dubbing phrases</mat-label>
-        <input
-          matInput
-          placeholder="Phrases to exclude in the dubbing process. The original utterance will be used instead."
+        <mat-chip-grid
+          #noDubbingPhrasesChipGrid
+          aria-label="Enter phrase that should not be dubbed"
+          matTooltip="Phrases to exclude in the dubbing process. The original utterance will be used instead."
           formControlName="no_dubbing_phrases"
+        >
+          @for (phrase of noDubbingPhrases(); track phrase) {
+            <mat-chip-row (removed)="removeChipEntry(noDubbingPhrases, phrase)">
+              {{ phrase }}
+              <button matChipRemove aria-label="'remove ' + phrase">
+                <mat-icon>cancel</mat-icon>
+              </button>
+            </mat-chip-row>
+          }
+        </mat-chip-grid>
+        <input
+          placeholder="Add a phrase that should not be dubbed.."
+          [matChipInputFor]="noDubbingPhrasesChipGrid"
+          (matChipInputTokenEnd)="addChipEntry(noDubbingPhrases, $event)"
         />
       </mat-form-field>
       <mat-form-field class="full-width">
@@ -307,6 +294,136 @@ limitations under the License.
           #minMergeThresholdSlider
         />
       </mat-slider>
+      <mat-checkbox
+        class="full-width"
+        matTooltip="Avoids repetitive voice assignment and cloning."
+        formControlName="keep_voice_assignments"
+        >Keep voice assignments</mat-checkbox
+      >
+      <mat-checkbox
+        class="full-width"
+        matTooltip="Adjust the duration of the dubbed audio files to match the duration of the source audio files."
+        formControlName="adjust_speed"
+        >Adjust speed</mat-checkbox
+      >
+      <div class="slider-label-container full-width">
+        <label id="vocals-volume-slider-label">Vocals volume adjustment </label>
+        <label class="slider-value-label">{{
+          vocalsVolumeAdjustmentSlider.value
+        }}</label>
+      </div>
+      <mat-slider min="0.0" max="10.0" step="0.1" class="full-width">
+        <input
+          matSliderThumb
+          value="5.0"
+          formControlName="vocals_volume_adjustment"
+          #vocalsVolumeAdjustmentSlider
+        />
+      </mat-slider>
+      <div class="slider-label-container full-width">
+        <label id="background-volume-slider-label"
+          >Background volume adjustment
+        </label>
+        <label class="slider-value-label">{{
+          backgroundVolumeAdjustmentSlider.value
+        }}</label>
+      </div>
+      <mat-slider min="0.0" max="10.0" step="0.1" class="full-width">
+        <input
+          matSliderThumb
+          value="0.0"
+          formControlName="background_volume_adjustment"
+          #backgroundVolumeAdjustmentSlider
+        />
+      </mat-slider>
+      <mat-form-field class="full-width">
+        <mat-label>Gemini model</mat-label>
+        <select matNativeControl formControlName="gemini_model_name">
+          <option value="gemini-1.5-flash" selected>gemini-1.5-flash</option>
+          <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+        </select>
+      </mat-form-field>
+      <div class="slider-label-container full-width">
+        <label id="gemini-temperature-slider-label">Temperature</label>
+        <label class="slider-value-label">{{
+          geminiTemperatureSlider.value
+        }}</label>
+      </div>
+      <mat-slider min="0.0" max="2.0" step="0.1" class="full-width">
+        <input
+          matSliderThumb
+          value="1.0"
+          matTooltip="Randomness in token selection."
+          formControlName="temperature"
+          #geminiTemperatureSlider
+        />
+      </mat-slider>
+      <div class="slider-label-container full-width">
+        <label id="gemini-top-p-slider-label">Top P</label>
+        <label class="slider-value-label">{{ geminiTopPSlider.value }}</label>
+      </div>
+      <mat-slider min="0.0" max="1.0" step="0.01" class="full-width">
+        <input
+          matSliderThumb
+          value="0.95"
+          matTooltip="Top-p changes how the model selects tokens for output. Tokens are selected from most probable to least until the sum of their probabilities equals the top-p value. For example, if tokens A, B, and C have a probability of .3, .2, and .1 and the top-p value is .5, then the model will select either A or B as the next token (using temperature). For the least variable results, set top-P to 0."
+          formControlName="top_p"
+          #geminiTopPSlider
+        />
+      </mat-slider>
+      <div class="slider-label-container full-width">
+        <label id="gemini-top-k-slider-label">Top K</label>
+        <label class="slider-value-label">{{ geminiTopKSlider.value }}</label>
+      </div>
+      <mat-slider min="1" max="40" step="1" class="full-width">
+        <input
+          matSliderThumb
+          value="40"
+          matTooltip="Top-K specifies the number of candidate tokens when the model is selecting an output token. Use a lower value for less random responses and a higher value for more random responses."
+          formControlName="top_k"
+          #geminiTopKSlider
+        />
+      </mat-slider>
+      <mat-form-field class="full-width">
+        <mat-label>Gemini safety settings</mat-label>
+        <select
+          matNativeControl
+          matTooltip="What kind of safety settings to use in the dubbing process."
+          formControlName="gemini_safety_settings"
+        >
+          <option value="Low" selected>Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="None">None</option>
+        </select>
+      </mat-form-field>
+      <mat-checkbox
+        class="full-width"
+        matTooltip="use ElevenLabs API for the highest quality voiceover. WARNING: ElevenLabs API is a paid solution and will generate extra costs."
+        formControlName="use_elevenlabs"
+        >Use ElevenLabs</mat-checkbox
+      >
+      <mat-form-field class="full-width">
+        <mat-label>ElevenLabs API token</mat-label>
+        <input
+          matInput
+          placeholder="Get an API token at ElevenLabs"
+          formControlName="elevenlabs_token"
+          autocomplete="on"
+        />
+      </mat-form-field>
+      <mat-checkbox
+        class="full-width"
+        matTooltip="Use ElevenLabs API to clone source voices. WARNING: This ElevenLabs API functionality might require higher tier pricing."
+        formControlName="elevenlabs_clone_voices"
+        >Clone voices</mat-checkbox
+      >
+      <mat-checkbox
+        class="full-width"
+        matTooltip="Remove all the voices that were cloned with ELevenLabs during the dubbing process."
+        formControlName="elevenlabs_remove_cloned_voices"
+        >Remove cloned voices</mat-checkbox
+      >
       <div>
         <button mat-button matStepperPrevious>Back</button>
         <button mat-button matStepperNext (click)="generateUtterances()">

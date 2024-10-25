@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 import { HttpClientModule } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, WritableSignal } from '@angular/core';
 import {
   FormBuilder,
   FormsModule,
@@ -24,6 +24,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatChipInputEvent, MatChipsModule } from '@angular/material/chips';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -35,7 +36,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CONFIG } from '../../../config';
 import { ApiCallsService } from './api-calls/api-calls.service';
-import { Chip, InputChipsComponent } from './input-chips.component';
+import { InputChipsComponent } from './input-chips.component';
 
 interface Dubbing {
   start: number;
@@ -62,6 +63,7 @@ interface Dubbing {
     MatIconModule,
     MatButtonModule,
     MatCardModule,
+    MatChipsModule,
     MatInputModule,
     MatFormFieldModule,
     FormsModule,
@@ -80,15 +82,16 @@ interface Dubbing {
 })
 export class AppComponent {
   title = 'Ariel UI';
-  preferredVoices: Chip[] = [
-    { name: 'Journey' },
-    { name: 'Studio' },
-    { name: 'Wavenet' },
-    { name: 'Polyglot' },
-    { name: 'News' },
-    { name: 'neural2' },
-    { name: 'Standard' },
-  ];
+  readonly preferredVoices = signal([
+    'Journey',
+    'Studio',
+    'Wavenet',
+    'Polyglot',
+    'News',
+    'neural2',
+    'Standard',
+  ]);
+  readonly noDubbingPhrases = signal([]);
   loadingTranslations = false;
   loadingDubbedVideo = false;
   dubbingCompleted = false;
@@ -137,16 +140,56 @@ export class AppComponent {
     original_language: ['de-DE', Validators.required],
     target_language: ['pl-PL', Validators.required],
     hugging_face_token: ['', Validators.required],
-    number_of_speakers: [''],
-    no_dubbing_phrases: [''],
+    number_of_speakers: [1],
+    no_dubbing_phrases: [this.noDubbingPhrases()],
     diarization_instructions: [''],
     translation_instructions: [''],
-    merge_utterances: [''],
-    minimum_merge_threshold: [''],
+    merge_utterances: [true],
+    minimum_merge_threshold: [0.001],
+    preferred_voices: [this.preferredVoices()],
+    assigned_voices_override: [''],
+    keep_voice_assignments: [true],
+    adjust_speed: [false],
+    vocals_volume_adjustment: [5.0],
+    background_volume_adjustment: [0.0],
+    gemini_model_name: ['gemini-1.5-flash'],
+    temperature: [1.0],
+    top_p: [0.95],
+    top_k: [40],
+    max_output_tokens: [8192],
+    gemini_safety_settings: ['Medium'],
+    use_elevenlabs: [false],
+    elevenlabs_token: [''],
+    elevenlabs_clone_voices: [false],
+    elevenlabs_remove_cloned_voices: [false],
   });
   secondFormGroup = this._formBuilder.group({
     secondCtrl: ['', Validators.required],
   });
+
+  removeChipEntry(chipsCollection: WritableSignal<string[]>, entry: string) {
+    chipsCollection.update(chips => {
+      const index = chips.indexOf(entry);
+      if (index < 0) {
+        return chips;
+      }
+
+      chips.splice(index, 1);
+      return [...chips];
+    });
+  }
+
+  addChipEntry(
+    chipsCollection: WritableSignal<string[]>,
+    event: MatChipInputEvent
+  ): void {
+    const value = (event.value || '').trim();
+    if (value) {
+      chipsCollection.update(chips => [...chips, value]);
+    }
+    // Clear the input value
+    event.chipInput!.clear();
+  }
 
   dubVideo() {
     this.loadingDubbedVideo = true;
