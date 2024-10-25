@@ -204,8 +204,9 @@ class GcpDubbingProcessor:
 
 	def enrich_dubber_params(self):
 		self.inject_required_dubber_params()
-		safety_level = self.dubber_params["safety_settings"]
-		self.dubber_params["safety_settings"] = get_safety_settings(safety_level)
+		if "safety_settings" in self.dubber_params:
+			safety_level = self.dubber_params["safety_settings"]
+			self.dubber_params["safety_settings"] = get_safety_settings(safety_level)
 
 	def inject_required_dubber_params(self):
 		input_video_local_path = f"{self.local_path}/{INPUT_FILE_NAME}"
