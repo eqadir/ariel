@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.6.1-base-ubuntu24.04
+FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
 
 RUN apt-get -y update && apt-get -y upgrade
 RUN apt-get install -y --no-install-recommends ffmpeg
@@ -9,7 +9,7 @@ RUN apt-get install -y python3-pip python3-dev python-is-python3 && \
 WORKDIR /ariel
 
 COPY requirements.txt .
-RUN pip install -r ./requirements.txt --break-system-packages
+RUN pip install -r ./requirements.txt
 
 COPY app.py .
 

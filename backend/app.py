@@ -173,9 +173,9 @@ class GcpDubbingProcessor:
 			video_file=f'{local_output_path}/video_processing/input_video.mp4',
 			audio_file=f'{local_output_path}/video_processing/input_audio.mp3',
 			audio_vocals_file=f"{local_output_path}" +
-			"/audio_processing/htdemucs/input_audio/vocals.mp3",
+			"/audio_processing/vocals.mp3",
 			audio_background_file=f"{local_output_path}" +
-			"/audio_processing/htdemucs/input_audio/no_vocals.mp3"
+			"/audio_processing/no_vocals.mp3"
 		)
 
 		self.dubber = Dubber(**self.dubber_params)

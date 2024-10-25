@@ -1,4 +1,3 @@
-google-api-core==2.19.1
 google-cloud-logging==3.10.0
 google-cloud-storage==2.18.2
 google-cloud-pubsub==2.25.2
@@ -6,4 +5,4 @@ cloudevents==1.11.0
 Flask==3.0.3
 gunicorn==22.0.0
 Werkzeug==3.0.3
-gtech-ariel==0.0.16
+gtech-ariel==0.0.17
