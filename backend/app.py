@@ -217,7 +217,6 @@ class GcpDubbingProcessor:
 			self.dubber.utterance_metadata = json.load(f)
 			self.dubber.preprocessing_output = self.preprocessing_artifacts
 
-			self.dubber.run_text_to_speech()
 			self.dubber.run_postprocessing()
 			self.dubber.run_save_utterance_metadata()
 			self.dubber.postprocessing_output.utterance_metadata = (
