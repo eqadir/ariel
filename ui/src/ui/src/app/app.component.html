@@ -240,6 +240,16 @@ limitations under the License.
                 [matChipInputFor]="preferredVoicesChipGrid"
                 (matChipInputTokenEnd)="addChipEntry(preferredVoices, $event)"
               />
+              <mat-hint align="start">
+                See
+                <a
+                  href="https://cloud.google.com/text-to-speech/docs/voices"
+                  target="_blank"
+                  >here</a
+                >
+                for a list of voices. Use only the base voice name e.g.
+                ["Journey"] and not ["en-US-Journey-A"].
+              </mat-hint>
             </mat-form-field>
             <mat-form-field class="full-width">
               <mat-label>No dubbing phrases</mat-label>

@@ -83,15 +83,7 @@ interface Dubbing {
 })
 export class AppComponent {
   title = 'Ariel UI';
-  readonly preferredVoices = signal([
-    'Journey',
-    'Studio',
-    'Wavenet',
-    'Polyglot',
-    'News',
-    'neural2',
-    'Standard',
-  ]);
+  readonly preferredVoices = signal([]);
   readonly noDubbingPhrases = signal([]);
   loadingTranslations = false;
   loadingDubbedVideo = false;
