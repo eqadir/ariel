@@ -142,19 +142,4 @@ export class ApiCallsService implements ApiCalls {
       })
     );
   }
-
-  // hello(): Observable<string> {
-  //   return new Observable(subscriber => {
-  //     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  //     // @ts-ignore
-  //     google.script.run
-  //       .withSuccessHandler((result: string) => {
-  //         this.ngZone.run(() => {
-  //           subscriber.next(result);
-  //           subscriber.complete();
-  //         });
-  //       })
-  //       .hello();
-  //   });
-  // }
 }

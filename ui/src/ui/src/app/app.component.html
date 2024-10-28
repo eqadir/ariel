@@ -14,13 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 <mat-toolbar color="secondary">
-  <!-- <button
-    mat-icon-button
-    class="example-icon"
-    aria-label="Example icon-button with menu icon"
-  >
-    <mat-icon>menu</mat-icon>
-  </button> -->
   <span>Ariel - AI Video Ad Dubbing</span>
 </mat-toolbar>
 <br />
@@ -471,7 +464,6 @@ limitations under the License.
       </form>
     </mat-step>
     <mat-step [stepControl]="translationsFormGroup">
-      <!-- <form [formGroup]="translationsFormGroup"> -->
       <ng-template matStepLabel>Review translations</ng-template>
       <div class="mat-expansion-panel-body">
         <div class="container">
@@ -491,9 +483,7 @@ limitations under the License.
               <div class="row">
                 <div class="col">
                   <mat-card style="flex: 1">
-                    <mat-card-header>
-                      <!-- <mat-card-title>dubbing.</mat-card-title> -->
-                    </mat-card-header>
+                    <mat-card-header> </mat-card-header>
                     <mat-card-content>
                       <p>{{ dubbing.text }}</p>
                     </mat-card-content>
@@ -641,7 +631,6 @@ limitations under the License.
           Dub video
         </button>
       </div>
-      <!-- </form> -->
     </mat-step>
     <mat-step>
       <ng-template matStepLabel>Download videos</ng-template>

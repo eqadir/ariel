@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { HttpClientModule } from '@angular/common/http';
 import { Component, inject, signal, WritableSignal } from '@angular/core';
 import {
   FormBuilder,
@@ -74,7 +73,6 @@ interface Dubbing {
     MatSliderModule,
     InputChipsComponent,
     MatExpansionModule,
-    HttpClientModule,
     MatStepperModule,
     ReactiveFormsModule,
     MatProgressSpinnerModule,
@@ -100,17 +98,11 @@ export class AppComponent {
   dubbingCompleted = false;
   selectedFile: File | null = null;
   selectedFileUrl: string = '';
-
-  readonly configPanelOpenState = signal(true);
-  readonly videoSettingsPanelOpenState = signal(true);
   dubbedInstances!: Dubbing[];
   dubbedUrl: string = '';
   gcsFolder: string = '';
 
-  constructor(
-    // private http: HttpClient,
-    private apiCalls: ApiCallsService
-  ) {}
+  constructor(private apiCalls: ApiCallsService) {}
 
   onFileSelected(event: Event) {
     const inputElement = event.target as HTMLInputElement;
