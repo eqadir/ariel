@@ -92,13 +92,7 @@ class WorkdirSynchronizer:
 		os.makedirs(self.local_path, exist_ok=True)
 		os.makedirs(self.local_output_path, exist_ok=True)
 
-	def _clean(self):
-		logging.info("Cleaning work directory")
-		shutil.rmtree(self.local_path, ignore_errors=True)
-		self._ensure_local_dirs_exist()
-
 	def download_workdir(self):
-		self._clean()
 		logging.info("Downloading working directory files from GCS")
 		command = f"gcloud storage rsync -r --delete-unmatched-destination-objects gs://{self.bucket.name}/{self.gcs_path} {self.local_path}"
 		os.system(command)
@@ -155,24 +149,73 @@ class GcpDubbingProcessor:
 		self.dubber.run_speech_to_text()
 		self.dubber.run_translation()
 		self.dubber.run_configure_text_to_speech()
-
+		self.dubber.run_text_to_speech()
 		self._save_current_utterances()
 
 	def _render_preview(self):
+		self.dubber.preprocessing_output = self.preprocessing_artifacts
+
+		original_utterances_file_path = f"{self.local_path}/{INITIAL_UTTERANCES_FILE_NAME}"
+		with open(original_utterances_file_path) as f:
+			original_metadata = json.load(original_utterances_file_path)
+			self.dubber.utterance_metadata = original_metadata
+
 		preview_json_file_path = f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}"
-		with open(preview_json_file_path) as f:
-			utterance_metadata = json.load(f)
-			self.dubber.utterance_metadata = utterance_metadata
-			self.dubber.preprocessing_output = self.preprocessing_artifacts
-			self.dubber.run_text_to_speech()
+		with open(preview_json_file_path) as g:
+			updated_utterance_metadata = json.load(g)
+
+		updated_utterance_metadata = self._update_modified_metadata(original_metadata, updated_utterance_metadata)
+		self._redub_modified_utterances(original_metadata, updated_utterance_metadata)
+
 		self._save_current_utterances()
 		os.remove(preview_json_file_path)
+
+	def _update_modified_metadata(self, original_metadata, updated_metadata):
+		for original, updated in zip(
+			original_metadata, updated_metadata
+			):
+			combined = updated
+			original_start_end = (original["start"], original["end"])
+			updated_start_end = (updated["start"], updated["end"])
+			original_text = original.text
+			updated_text = updated.text
+			edit_index = -1
+			if original_start_end != updated_start_end:
+				combined = self.dubber._repopulate_metadata(utterance = combined)
+				edit_index = original_metadata.index(original)
+			if original_text != updated_text:
+				combined = self.dubber._run_translation_on_single_utterance(combined)
+				edit_index = original_metadata.index(original)
+			if edit_index != -1:
+				self.dubber.utterance_metadata = self.dubber._update_utterance_metadata(
+              updated_utterance=combined,
+              utterance_metadata=original,
+              edit_index=edit_index,
+          )
+
+		return self.dubber.utterance_metadata
+
+	def _redub_modified_utterances(self, original_metadata, updated_metadata):
+		#non-interactive copy of Dubber._verify_and_redub_utterances
+		edited_utterances = self.dubber.text_to_speech.dub_edited_utterances(
+			original_utterance_metadata=original_metadata,
+			updated_utterance_metadata=updated_metadata,
+			)
+
+		for edited_utterance in edited_utterances:
+			for i, original_utterance in enumerate(updated_metadata):
+				if (
+					original_utterance["path"] == edited_utterance["path"]
+					and original_utterance["dubbed_path"]
+					!= edited_utterance["dubbed_path"]
+				):
+					updated_metadata[i] = edited_utterance
+		self.dubber.utterance_metadata = updated_metadata
 
 	def _render_dubbed_video(self):
 		with open(f"{self.local_path}/{APPROVED_UTTERANCE_FILE_NAME}") as f:
 			self.dubber.utterance_metadata = json.load(f)
 			self.dubber.preprocessing_output = self.preprocessing_artifacts
-			# output = self.dubber.dub_ad_with_utterance_metadata(utterance_metadata=utterance_metadata, preprocessing_artifacts=self.preprocessing_artifacts,overwrite_utterance_metadata=True)
 
 			self.dubber.run_text_to_speech()
 			self.dubber.run_postprocessing()
