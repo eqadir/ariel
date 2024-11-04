@@ -624,9 +624,18 @@ limitations under the License.
                       }
                     </mat-card-content>
                     <mat-card-actions align="end">
-                      <button mat-button (click)="toggleEdit(dubbing)">
-                        {{ dubbing.editing ? 'Save' : 'Edit' }}
-                      </button>
+                      @if (dubbing.editing) {
+                        <button mat-button (click)="updateTranslations()">
+                          Save
+                        </button>
+                        <button mat-button (click)="toggleEdit(dubbing)">
+                          Cancel
+                        </button>
+                      } @else {
+                        <button mat-button (click)="toggleEdit(dubbing)">
+                          Edit
+                        </button>
+                      }
                     </mat-card-actions>
                   </mat-card>
                 </div>

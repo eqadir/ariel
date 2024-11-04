@@ -15,7 +15,18 @@
  */
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, NgZone } from '@angular/core';
-import { Observable, of, retry, switchMap, timer } from 'rxjs';
+import {
+  catchError,
+  filter,
+  map,
+  Observable,
+  of,
+  retry,
+  switchMap,
+  take,
+  takeWhile,
+  timer,
+} from 'rxjs';
 import { CONFIG } from '../../../../config';
 import { ApiCalls } from './api-calls.service.interface';
 
@@ -113,6 +124,48 @@ export class ApiCallsService implements ApiCalls {
           return timer(retryDelay);
         },
       })
+    );
+  }
+
+  checkGcsFileDeletion(
+    url: string,
+    retryDelay = 0,
+    maxRetries = 0
+  ): Observable<boolean> {
+    const gcsUrl = `${CONFIG.cloudStorage.endpointBase}/b/${CONFIG.cloudStorage.bucket}/o/${encodeURIComponent(url)}`;
+
+    let deleted = false;
+    return this.getUserAuthToken().pipe(
+      // Take only the first value.
+      take(1),
+      switchMap(authToken => {
+        // Create an interval observable.
+        return timer(0, retryDelay).pipe(
+          // takeWhile gets the emission number from the timer, which we can
+          // use to check how many times we've retried.
+          takeWhile(tries => tries <= maxRetries && !deleted),
+          // call the httpClient
+          switchMap(() =>
+            this.httpClient.get(gcsUrl, {
+              headers: { Authorization: `Bearer ${authToken}` },
+            })
+          ),
+          // Success case: the file still exists.
+          map(() => false),
+          // Error case: the file does not exist (404).
+          catchError(error => {
+            if (error.status === 404) {
+              deleted = true;
+              return of(deleted);
+            }
+            throw error;
+          })
+        );
+      }),
+      // Only emit when the check returns true.
+      filter(deleted => deleted),
+      // Only emit the first result.
+      take(1)
     );
   }
 

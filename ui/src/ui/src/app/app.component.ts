@@ -122,6 +122,49 @@ export class AppComponent {
     }
   }
 
+  updateTranslations() {
+    this.loadingTranslations = true;
+    // Upload new utterances_preview file.
+    this.apiCalls
+      .postToGcs(
+        this.jsonFile(
+          JSON.stringify(this.dubbedInstances),
+          'utterances_preview.json'
+        ),
+        this.gcsFolder,
+        'utterances_preview.json'
+      )
+      .subscribe(response => {
+        console.log('Preview utterances upload completed!', response);
+        // Wait for backend to finish processing - we wait for
+        // utterances_preview.json to be deleted by the backend.
+        this.apiCalls
+          .checkGcsFileDeletion(
+            `${this.gcsFolder}/utterances_preview.json`,
+            15000,
+            20
+          )
+          .subscribe(response => {
+            console.log('Preview utterances deleted!', response);
+            if (response) {
+              this.apiCalls
+                .getFromGcs(`${this.gcsFolder}/utterances.json`, 15000, 20)
+                .subscribe(response => {
+                  console.log('Updated utterances downloaded!', response);
+                  this.dubbedInstances = JSON.parse(
+                    response
+                  ) as unknown as Dubbing[];
+                  this.dubbedInstances.forEach(instance => {
+                    instance.editing = false;
+                  });
+                  this.loadingTranslations = false;
+                });
+            }
+            // Download updated utterances.
+          });
+      });
+  }
+
   toggleEdit(dubbing: Dubbing): void {
     dubbing.editing = !dubbing.editing;
   }

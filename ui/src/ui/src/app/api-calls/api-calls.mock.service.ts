@@ -43,6 +43,24 @@ export class ApiCallsService implements ApiCalls {
     });
   }
 
+  checkGcsFileDeletion(
+    url: string,
+    retryDelay = 0,
+    maxRetries = 0
+  ): Observable<boolean> {
+    return new Observable(subscriber => {
+      console.log(
+        `Checking for file existance: ${url}, Retrydelay: ${retryDelay}, MaxRetries: ${maxRetries}`
+      );
+      setTimeout(() => {
+        this.ngZone.run(async () => {
+          subscriber.next(true);
+          subscriber.complete();
+        });
+      }, 2000);
+    });
+  }
+
   downloadBlob(data: string, retryDelay = 0, maxRetries = 0): Observable<Blob> {
     return new Observable(subscriber => {
       console.log(
@@ -53,6 +71,8 @@ export class ApiCallsService implements ApiCalls {
           const localFile = data.endsWith('.mp4')
             ? '/assets/sample_video.mp4'
             : '/assets/sample_audio_chunk.mp3';
+
+          console.log(`Fetching local file: ${localFile}`);
 
           subscriber.next(await this.loadLocalBlob(localFile));
           subscriber.complete();
