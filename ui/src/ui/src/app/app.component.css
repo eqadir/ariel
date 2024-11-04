@@ -112,3 +112,8 @@ limitations under the License.
 .mat-card-content > div {
   margin-bottom: 8px;
 }
+
+.greyed-out {
+  opacity: 0.3;
+  pointer-events: none;
+}

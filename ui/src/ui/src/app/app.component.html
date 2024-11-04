@@ -497,10 +497,17 @@ limitations under the License.
                     <mat-card-content>
                       <p>{{ dubbing.text }}</p>
                     </mat-card-content>
+                    <mat-card-actions>
+                      <mat-checkbox [(ngModel)]="dubbing.for_dubbing"
+                        >Dub</mat-checkbox
+                      >
+                    </mat-card-actions>
                   </mat-card>
                 </div>
                 <div class="col">
-                  <mat-card>
+                  <mat-card
+                    [className]="dubbing.for_dubbing ? '' : 'greyed-out'"
+                  >
                     <mat-card-content>
                       @if (!dubbing.editing) {
                         <div class="audio-container">
@@ -518,10 +525,6 @@ limitations under the License.
                         </div>
                         <div>
                           <span class="label">End:</span> {{ dubbing.end }}
-                        </div>
-                        <div>
-                          <span class="label">For Dubbing:</span>
-                          {{ dubbing.for_dubbing }}
                         </div>
                         <div>
                           <span class="label">Speaker ID:</span>
@@ -573,9 +576,6 @@ limitations under the License.
                             [(ngModel)]="dubbing.end"
                           />
                         </mat-form-field>
-                        <mat-checkbox [(ngModel)]="dubbing.for_dubbing"
-                          >Use for dubbing</mat-checkbox
-                        >
                         <mat-form-field class="full-width">
                           <mat-label>Speaker ID</mat-label>
                           <input matInput [(ngModel)]="dubbing.speaker_id" />
