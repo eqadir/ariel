@@ -1,5 +1,4 @@
 from flask import Flask, request
-from cloudevents.http import from_http
 import os
 import logging
 from google.cloud import logging as cloudlogging
@@ -7,13 +6,14 @@ from google.cloud import pubsub_v1
 import json
 import google.cloud.storage
 import torch
-import glob
 import traceback
 import base64
 import shutil
 from pathlib import Path
 from ariel.dubbing import Dubber, PreprocessingArtifacts, get_safety_settings
-from ariel import translation
+from ariel import translation, text_to_speech
+import dataclasses
+from typing import Mapping, Sequence
 
 if __name__ == "__main__":
 	logging.basicConfig()
@@ -94,12 +94,12 @@ class WorkdirSynchronizer:
 
 	def download_workdir(self):
 		logging.info("Downloading working directory files from GCS")
-		command = f"gcloud storage rsync -r --delete-unmatched-destination-objects gs://{self.bucket.name}/{self.gcs_path} {self.local_path}"
+		command = f"gcloud storage rsync -r --verbosity=info --delete-unmatched-destination-objects gs://{self.bucket.name}/{self.gcs_path} {self.local_path}"
 		os.system(command)
 
 	def upload_workdir(self):
 		logging.info("Uploading all working directory files to GCS")
-		command = f"gcloud storage rsync -r --delete-unmatched-destination-objects {self.local_path} gs://{self.bucket.name}/{self.gcs_path}"
+		command = f"gcloud storage rsync -r --verbosity=info --delete-unmatched-destination-objects {self.local_path} gs://{self.bucket.name}/{self.gcs_path}"
 		os.system(command)
 
 class DummyProgressBar:
@@ -157,7 +157,7 @@ class GcpDubbingProcessor:
 
 		original_utterances_file_path = f"{self.local_path}/{INITIAL_UTTERANCES_FILE_NAME}"
 		with open(original_utterances_file_path) as f:
-			original_metadata = json.load(original_utterances_file_path)
+			original_metadata = json.load(f)
 			self.dubber.utterance_metadata = original_metadata
 
 		preview_json_file_path = f"{self.local_path}/{PREVIEW_UTTERANCES_FILE_NAME}"
@@ -168,34 +168,40 @@ class GcpDubbingProcessor:
 		self._redub_modified_utterances(original_metadata, updated_utterance_metadata)
 
 		self._save_current_utterances()
+		logging.info(f"Removing {preview_json_file_path}")
 		os.remove(preview_json_file_path)
 
-	def _update_modified_metadata(self, original_metadata, updated_metadata):
+	def _update_modified_metadata(self, original_metadata: Sequence[Mapping[str,str|float]], updated_metadata: Sequence[Mapping[str,str|float]]):
+		logging.info("Updating modified metadata")
+		edited_metadata = []
 		for original, updated in zip(
 			original_metadata, updated_metadata
 			):
-			combined = updated
 			original_start_end = (original["start"], original["end"])
 			updated_start_end = (updated["start"], updated["end"])
-			original_text = original.text
-			updated_text = updated.text
-			edit_index = -1
-			if original_start_end != updated_start_end:
-				combined = self.dubber._repopulate_metadata(utterance = combined)
-				edit_index = original_metadata.index(original)
-			if original_text != updated_text:
-				combined = self.dubber._run_translation_on_single_utterance(combined)
-				edit_index = original_metadata.index(original)
-			if edit_index != -1:
-				self.dubber.utterance_metadata = self.dubber._update_utterance_metadata(
-              updated_utterance=combined,
-              utterance_metadata=original,
-              edit_index=edit_index,
-          )
+			original_text:str = original["text"]
+			updated_text:str = updated["text"]
+			if original != updated:
+				combined = updated
+				edit_index:int = original_metadata.index(original)
+				logging.info(f"Found updated utterance at index {edit_index}")
+				if original_start_end != updated_start_end:
+					combined = self.dubber._repopulate_metadata(utterance = combined)
+				if original_text != updated_text:
+					combined = self.dubber._run_translation_on_single_utterance(combined)
+				edited_metadata.append((edit_index, combined))
+
+		for edit_index, edited_utterance in edited_metadata:
+			self.dubber.utterance_metadata = self.dubber._update_utterance_metadata(
+				updated_utterance=edited_utterance,
+				utterance_metadata=original_metadata,
+				edit_index=edit_index,
+				)
 
 		return self.dubber.utterance_metadata
 
 	def _redub_modified_utterances(self, original_metadata, updated_metadata):
+		self._reinit_text_to_speech()
 		#non-interactive copy of Dubber._verify_and_redub_utterances
 		edited_utterances = self.dubber.text_to_speech.dub_edited_utterances(
 			original_utterance_metadata=original_metadata,
@@ -211,6 +217,22 @@ class GcpDubbingProcessor:
 				):
 					updated_metadata[i] = edited_utterance
 		self.dubber.utterance_metadata = updated_metadata
+
+	def _reinit_text_to_speech(self):
+		self.dubber.text_to_speech = text_to_speech.TextToSpeech(
+			client=self.dubber.text_to_speech_client,
+			utterance_metadata=self.dubber.utterance_metadata,
+			output_directory=self.dubber.output_directory,
+			target_language=self.dubber.target_language,
+			preprocessing_output=dataclasses.asdict(self.dubber.preprocessing_output),
+			adjust_speed=self.dubber.adjust_speed,
+			use_elevenlabs=self.dubber.use_elevenlabs,
+			elevenlabs_model=self.dubber.elevenlabs_model,
+			elevenlabs_clone_voices=self.dubber.elevenlabs_clone_voices,
+			keep_voice_assignments=self.dubber.keep_voice_assignments,
+			voice_assignments=self.dubber.voice_assignments,
+		)
+		self.dubber.run_configure_text_to_speech()
 
 	def _render_dubbed_video(self):
 		with open(f"{self.local_path}/{APPROVED_UTTERANCE_FILE_NAME}") as f:
