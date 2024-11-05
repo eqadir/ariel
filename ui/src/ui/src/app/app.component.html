@@ -505,9 +505,7 @@ limitations under the License.
                   </mat-card>
                 </div>
                 <div class="col">
-                  <mat-card
-                    [className]="dubbing.for_dubbing ? '' : 'greyed-out'"
-                  >
+                  <mat-card [class.greyed-out]="!dubbing.for_dubbing">
                     <mat-card-content>
                       @if (!dubbing.editing) {
                         <div class="audio-container">
