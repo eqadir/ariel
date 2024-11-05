@@ -495,12 +495,33 @@ limitations under the License.
                   <mat-card style="flex: 1">
                     <mat-card-header> </mat-card-header>
                     <mat-card-content>
-                      <p>{{ dubbing.text }}</p>
+                      @if (!dubbing.editing) {
+                        <div class="audio-container">
+                          <mat-icon
+                            (click)="playAudio(dubbing.path)"
+                            class="speaker-icon"
+                            >volume_up</mat-icon
+                          >
+                        </div>
+                        <div class="translated-text">
+                          {{ dubbing.text }}
+                        </div>
+                      } @else {
+                        <mat-form-field class="full-width edit-textarea">
+                          <mat-label>Original text</mat-label>
+                          <textarea
+                            matInput
+                            [(ngModel)]="dubbing.text"
+                          ></textarea>
+                        </mat-form-field>
+                      }
                     </mat-card-content>
                     <mat-card-actions>
-                      <mat-checkbox [(ngModel)]="dubbing.for_dubbing"
-                        >Dub</mat-checkbox
-                      >
+                      @if (!dubbing.editing) {
+                        <mat-checkbox [(ngModel)]="dubbing.for_dubbing"
+                          >Dub</mat-checkbox
+                        >
+                      }
                     </mat-card-actions>
                   </mat-card>
                 </div>
