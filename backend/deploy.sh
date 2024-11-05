@@ -129,7 +129,9 @@ else
     --timeout=600s \
     --concurrency=7 \
     --set-env-vars PROJECT_ID=$GCP_PROJECT_ID \
-    --set-env-vars REGION=$GCP_REGION
+    --set-env-vars REGION=$GCP_REGION \
+    --add-volume name=ariel-bucket,type=cloud-storage,bucket=$GCS_BUCKET \
+    --add-volume-mount volume=ariel-bucket,mount-path=/tmp/ariel
 fi
 
 printf "\nINFO Setting up triggers from GCS to Ariel processor topic in Cloud Run"

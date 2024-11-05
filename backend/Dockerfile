@@ -1,14 +1,9 @@
 FROM nvidia/cuda:12.2.2-cudnn8-runtime-ubuntu22.04
 
-#python for running app, ffmpeg for video editing and curl to install gcloud
+#python for running app, ffmpeg for video editing
 RUN apt-get update && \
-  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-dev python-is-python3 curl tzdata ffmpeg && \
+  DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip python3-dev python-is-python3 tzdata ffmpeg && \
   rm -rf /var/lib/apt/lists/*
-
-#install gcloud
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
-  curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
-  apt-get update -y && apt-get install google-cloud-cli -y && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ariel
 COPY requirements.txt .

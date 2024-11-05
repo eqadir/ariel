@@ -65,42 +65,12 @@ def process_event(project_id, region, bucket, trigger_file_path):
 		trigger_directory = trigger_file_path.rpartition("/")[0]
 		trigger_file_name = trigger_file_path.rpartition("/")[2]
 		local_path = f"/tmp/ariel/{trigger_directory}"
-		synchronizer = WorkdirSynchronizer(bucket, trigger_directory, local_path)
-		synchronizer.download_workdir()
 		processor = GcpDubbingProcessor(project_id, region, local_path)
 		processor.process_file(trigger_file_name)
-		synchronizer.upload_workdir()
 		logging.info(f"Done processing {bucket}/{trigger_file_path}")
 	except Exception as e:
 		logging.info("Error in processing event")
 		logging.error(traceback.format_exc())
-
-class WorkdirSynchronizer:
-
-	def __init__(
-		self,
-		bucket_name: str,
-		gcs_path: str,
-		local_path: str):
-		self.bucket = storage_client.get_bucket(bucket_name)
-		self.gcs_path = gcs_path
-		self.local_path = local_path
-		self.local_output_path = f"{self.local_path}/{WORKDIR_NAME}"
-		self._ensure_local_dirs_exist()
-
-	def _ensure_local_dirs_exist(self):
-		os.makedirs(self.local_path, exist_ok=True)
-		os.makedirs(self.local_output_path, exist_ok=True)
-
-	def download_workdir(self):
-		logging.info("Downloading working directory files from GCS")
-		command = f"gcloud storage rsync -r --verbosity=info --delete-unmatched-destination-objects gs://{self.bucket.name}/{self.gcs_path} {self.local_path}"
-		os.system(command)
-
-	def upload_workdir(self):
-		logging.info("Uploading all working directory files to GCS")
-		command = f"gcloud storage rsync -r --verbosity=info --delete-unmatched-destination-objects {self.local_path} gs://{self.bucket.name}/{self.gcs_path}"
-		os.system(command)
 
 class DummyProgressBar:
 	def update(param=None):
@@ -181,6 +151,8 @@ class GcpDubbingProcessor:
 			updated_start_end = (updated["start"], updated["end"])
 			original_text:str = original["text"]
 			updated_text:str = updated["text"]
+			original_voice = {"speaker_id":original["speaker_id"], "assigned_voice": original["assigned_voice"], "ssml_gender": original["ssml_gender"]}
+			updated_voice = {"speaker_id":updated["speaker_id"], "assigned_voice": updated["assigned_voice"], "ssml_gender": updated["ssml_gender"]}
 			if original != updated:
 				combined = updated
 				edit_index:int = original_metadata.index(original)
@@ -189,6 +161,12 @@ class GcpDubbingProcessor:
 					combined = self.dubber._repopulate_metadata(utterance = combined)
 				if original_text != updated_text:
 					combined = self.dubber._run_translation_on_single_utterance(combined)
+				if original_voice != updated_voice:
+					combined_voice = self.merge_voice_parameters(original_voice, updated_voice)
+					combined["speaker_id"] = combined_voice["speaker_id"]
+					combined["assigned_voice"] = combined_voice["assigned_voice"]
+					combined["ssml_gender"] = combined_voice["ssml_gender"]
+
 				edited_metadata.append((edit_index, combined))
 
 		for edit_index, edited_utterance in edited_metadata:
@@ -199,6 +177,42 @@ class GcpDubbingProcessor:
 				)
 
 		return self.dubber.utterance_metadata
+
+	def merge_voice_parameters(self, original_voice:Mapping[str,str],updated_voice:Mapping[str,str]):
+		combined_voice = {}
+		if original_voice["speaker_id"] != updated_voice["speaker_id"]:
+			#if you select existing speaker ID from another utterance,
+			# copy the gender and voice from it
+			#if there's a new speaker ID, use updated voice params
+			combined_voice["speaker_id"] = updated_voice["speaker_id"]
+			voice_if_assigned = self.dubber.voice_assignments.get(updated_voice["speaker_id"])
+			if voice_if_assigned:
+				combined_voice["assigned_voice"] = voice_if_assigned
+				combined_voice["ssml_gender"] = self.dubber._voice_assigner._unique_speaker_mapping[voice_if_assigned]
+			else:
+				combined_voice["ssml_gender"] = updated_voice["ssml_gender"]
+				combined_voice["assigned_voice"] = None
+		elif original_voice["assigned_voice"] != updated_voice["assigned_voice"]:
+			# if speaker ID didn't change but we set new assigned voice,
+			# we need to have new speaker ID and find what gender it is from
+			# voice assigner
+			combined_voice["assigned_voice"] = updated_voice["assigned_voice"]
+			combined_voice["speaker_id"] = None
+			combined_voice["ssml_gender"] = updated_voice["ssml_gender"]
+			for assigned_speaker_id, assigned_voice in self.dubber._voice_assigner.assigned_voices:
+				if assigned_voice == updated_voice["assigned_voice"]:
+					combined_voice["speaker_id"] = assigned_speaker_id
+					for gender_speaker_id, ssml_gender in self.dubber._voice_assigner._unique_speaker_mapping.items():
+						if gender_speaker_id == assigned_speaker_id:
+							combined_voice["ssml_gender"] = ssml_gender
+							break
+					break
+		elif original_voice["ssml_gender"] != updated_voice["ssml_gender"]:
+			# if you changed gender only, we generate new speaker id
+			# and assign not-yet-assigned voice to it
+			combined_voice["ssml_gender"] = updated_voice["ssml_gender"]
+			combined_voice["assigned_voice"] = None
+			combined_voice["speaker_id"] = None
 
 	def _redub_modified_utterances(self, original_metadata, updated_metadata):
 		self._reinit_text_to_speech()
