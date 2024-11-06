@@ -37,8 +37,26 @@ TRIGGER_FILES = [
 ]
 
 WORKDIR_NAME = "output"
+PROJECT_ID = os.environ.get("PROJECT_ID")
+REGION = os.environ.get("REGION")
+WORK_ROOT="/tmp/ariel"
 
 app = Flask(__name__)
+
+@app.route("/tasks", methods=["POST"])
+def processTask():
+	try:
+		payload = request.get_json()
+		directory = payload["directory"]
+		task = payload["task"]
+		local_path = f"{WORK_ROOT}/{directory}"
+		processor = GcpDubbingProcessor(PROJECT_ID, REGION, local_path)
+		processor.run_task(task)
+		return f"{processor.dubber.utterance_metadata}", 200
+	except Exception as e:
+		logging.info(f"Error in processing task {task} in directory {directory}")
+		logging.error(traceback.format_exc())
+		return f"Error while processing task {task}: {traceback.format_exc()}", 500
 
 @app.route("/", methods=["POST"])
 def process():
@@ -103,6 +121,16 @@ class GcpDubbingProcessor:
 
 		self.dubber = Dubber(**self.dubber_params)
 		self.dubber.progress_bar = DummyProgressBar()
+
+	def run_task(self, task:str):
+		if task.upper() == "GENERATE_UTTERANCES":
+			self._generate_utterances()
+		elif task.upper() == "GENERATE_PREVIEW":
+			self._render_preview()
+		elif task.upper() == "RENDER_DUBBED_VIDEO":
+			self._render_dubbed_video()
+		else:
+			logging.info(f"Ignoring task {task}")
 
 	def process_file(self, file_name: str):
 		if file_name == CONFIG_FILE_NAME:
@@ -178,7 +206,7 @@ class GcpDubbingProcessor:
 
 		return self.dubber.utterance_metadata
 
-	def merge_voice_parameters(self, original_voice:Mapping[str,str],updated_voice:Mapping[str,str]):
+	def merge_voice_parameters(self, original_voice:Mapping[str,str],updated_voice:Mapping[str,str]) -> Mapping[str,str]:
 		combined_voice = {}
 		if original_voice["speaker_id"] != updated_voice["speaker_id"]:
 			#if you select existing speaker ID from another utterance,
@@ -213,6 +241,7 @@ class GcpDubbingProcessor:
 			combined_voice["ssml_gender"] = updated_voice["ssml_gender"]
 			combined_voice["assigned_voice"] = None
 			combined_voice["speaker_id"] = None
+		return combined_voice
 
 	def _redub_modified_utterances(self, original_metadata, updated_metadata):
 		self._reinit_text_to_speech()
@@ -294,6 +323,8 @@ class GcpDubbingProcessor:
 		self.dubber_params["gcp_region"] = self.region
 		self.dubber_params['with_verification'] = False
 		self.dubber_params['clean_up'] = False
+		self.dubber_params["vocals_audio_file"]= None
+		self.dubber_params["background_audio_file"]= None
 
 if __name__ == "__main__":
 	process_event(os.environ.get("PROJECT_ID"), os.environ.get("REGION"), "cse-kubarozek-sandbox-ariel-us", "test-shell/config.json")
