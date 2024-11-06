@@ -19,7 +19,7 @@ import { ScriptUtil } from './script-util';
 function doGet() {
   return HtmlService.createTemplateFromFile('ui')
     .evaluate()
-    .setTitle('Ariel AI Video Ad Dubbing')
+    .setTitle('Ariel - AI Video Ad Dubbing')
     .setFaviconUrl(
       'https://services.google.com/fh/files/misc/ariel_favicon.png'
     );
