@@ -11,7 +11,7 @@ import base64
 import shutil
 from pathlib import Path
 from ariel.dubbing import Dubber, PreprocessingArtifacts, get_safety_settings
-from ariel import translation, text_to_speech
+from ariel import translation, text_to_speech, audio_processing
 import dataclasses
 from typing import Mapping, Sequence
 
@@ -43,20 +43,20 @@ WORK_ROOT="/tmp/ariel"
 
 app = Flask(__name__)
 
-@app.route("/tasks", methods=["POST"])
-def processTask():
-	try:
-		payload = request.get_json()
-		directory = payload["directory"]
-		task = payload["task"]
-		local_path = f"{WORK_ROOT}/{directory}"
-		processor = GcpDubbingProcessor(PROJECT_ID, REGION, local_path)
-		processor.run_task(task)
-		return f"{processor.dubber.utterance_metadata}", 200
-	except Exception as e:
-		logging.info(f"Error in processing task {task} in directory {directory}")
-		logging.error(traceback.format_exc())
-		return f"Error while processing task {task}: {traceback.format_exc()}", 500
+# @app.route("/tasks", methods=["POST"])
+# def processTask():
+# 	try:
+# 		payload = request.get_json()
+# 		directory = payload["directory"]
+# 		task = payload["task"]
+# 		local_path = f"{WORK_ROOT}/{directory}"
+# 		processor = GcpDubbingProcessor(PROJECT_ID, REGION, local_path)
+# 		processor.run_task(task)
+# 		return f"{processor.dubber.utterance_metadata}", 200
+# 	except Exception as e:
+# 		logging.info(f"Error in processing task {task} in directory {directory}")
+# 		logging.error(traceback.format_exc())
+# 		return f"Error while processing task {task}: {traceback.format_exc()}", 500
 
 @app.route("/", methods=["POST"])
 def process():
@@ -72,23 +72,23 @@ def process():
 		process_event(project_id, region, bucket, path)
 		return "Processed", 204
 	else:
-		logging.info(f"Ignoring file {bucket}/{path}")
 		return "Ignored file", 204
 
 def should_process_file(path: str):
 	return any(path.endswith(file_name) for file_name in TRIGGER_FILES)
 
 def process_event(project_id, region, bucket, trigger_file_path):
+	trigger_directory = trigger_file_path.rpartition("/")[0]
+	trigger_file_name = trigger_file_path.rpartition("/")[2]
+	local_path = f"/tmp/ariel/{trigger_directory}"
 	try:
-		trigger_directory = trigger_file_path.rpartition("/")[0]
-		trigger_file_name = trigger_file_path.rpartition("/")[2]
-		local_path = f"/tmp/ariel/{trigger_directory}"
 		processor = GcpDubbingProcessor(project_id, region, local_path)
 		processor.process_file(trigger_file_name)
 		logging.info(f"Done processing {bucket}/{trigger_file_path}")
 	except Exception as e:
-		logging.info("Error in processing event")
-		logging.error(traceback.format_exc())
+		logging.error(f"Error in processing {bucket}/{trigger_file_path}: {traceback.format_exc()}")
+		with open(f"{local_path}/error.log", "w") as f:
+			f.write(traceback.format_exc())
 
 class DummyProgressBar:
 	def update(param=None):
@@ -148,7 +148,13 @@ class GcpDubbingProcessor:
 		self.dubber.run_translation()
 		self.dubber.run_configure_text_to_speech()
 		self.dubber.run_text_to_speech()
+		self._save_available_voices()
 		self._save_current_utterances()
+
+	def _save_available_voices(self):
+		available_voices = self.dubber._voice_assigner.available_voices
+		with open(f"{self.local_path}/voices.json", "w") as f:
+			json.dump(available_voices, f)
 
 	def _render_preview(self):
 		self.dubber.preprocessing_output = self.preprocessing_artifacts
@@ -163,7 +169,7 @@ class GcpDubbingProcessor:
 			updated_utterance_metadata = json.load(g)
 
 		updated_utterance_metadata = self._update_modified_metadata(original_metadata, updated_utterance_metadata)
-		self._redub_modified_utterances(original_metadata, updated_utterance_metadata)
+		self.redub_modified_utterances(original_metadata, updated_utterance_metadata)
 
 		self._save_current_utterances()
 		logging.info(f"Removing {preview_json_file_path}")
@@ -172,9 +178,9 @@ class GcpDubbingProcessor:
 	def _update_modified_metadata(self, original_metadata: Sequence[Mapping[str,str|float]], updated_metadata: Sequence[Mapping[str,str|float]]):
 		logging.info("Updating modified metadata")
 		edited_metadata = []
-		for original, updated in zip(
+		for edit_index, (original, updated) in enumerate(zip(
 			original_metadata, updated_metadata
-			):
+			)):
 			original_start_end = (original["start"], original["end"])
 			updated_start_end = (updated["start"], updated["end"])
 			original_text:str = original["text"]
@@ -182,68 +188,43 @@ class GcpDubbingProcessor:
 			original_voice = {"speaker_id":original["speaker_id"], "assigned_voice": original["assigned_voice"], "ssml_gender": original["ssml_gender"]}
 			updated_voice = {"speaker_id":updated["speaker_id"], "assigned_voice": updated["assigned_voice"], "ssml_gender": updated["ssml_gender"]}
 			if original != updated:
-				combined = updated
-				edit_index:int = original_metadata.index(original)
 				logging.info(f"Found updated utterance at index {edit_index}")
 				if original_start_end != updated_start_end:
-					combined = self.dubber._repopulate_metadata(utterance = combined)
-				if original_text != updated_text:
-					combined = self.dubber._run_translation_on_single_utterance(combined)
+					updated = self.retranscribe_utterance(updated)
+				if original_text != updated_text or original_start_end != updated_start_end:
+					updated = self.retranslate_utterance(updated)
 				if original_voice != updated_voice:
-					combined_voice = self.merge_voice_parameters(original_voice, updated_voice)
-					combined["speaker_id"] = combined_voice["speaker_id"]
-					combined["assigned_voice"] = combined_voice["assigned_voice"]
-					combined["ssml_gender"] = combined_voice["ssml_gender"]
+					updated["speaker_id"] = original["speaker_id"]
+					updated["assigned_voice"] = original["assigned_voice"]
+					updated["ssml_gender"] = original["ssml_gender"]
+				edited_metadata.append((edit_index, updated))
 
-				edited_metadata.append((edit_index, combined))
-
+		logging.info(f"Found {len(edited_metadata)} edited utterances")
+		result_metadata = original_metadata.copy()
 		for edit_index, edited_utterance in edited_metadata:
-			self.dubber.utterance_metadata = self.dubber._update_utterance_metadata(
+			result_metadata = self.dubber._update_utterance_metadata(
 				updated_utterance=edited_utterance,
-				utterance_metadata=original_metadata,
+				utterance_metadata=result_metadata,
 				edit_index=edit_index,
 				)
 
-		return self.dubber.utterance_metadata
+		return result_metadata
 
-	def merge_voice_parameters(self, original_voice:Mapping[str,str],updated_voice:Mapping[str,str]) -> Mapping[str,str]:
-		combined_voice = {}
-		if original_voice["speaker_id"] != updated_voice["speaker_id"]:
-			#if you select existing speaker ID from another utterance,
-			# copy the gender and voice from it
-			#if there's a new speaker ID, use updated voice params
-			combined_voice["speaker_id"] = updated_voice["speaker_id"]
-			voice_if_assigned = self.dubber.voice_assignments.get(updated_voice["speaker_id"])
-			if voice_if_assigned:
-				combined_voice["assigned_voice"] = voice_if_assigned
-				combined_voice["ssml_gender"] = self.dubber._voice_assigner._unique_speaker_mapping[voice_if_assigned]
-			else:
-				combined_voice["ssml_gender"] = updated_voice["ssml_gender"]
-				combined_voice["assigned_voice"] = None
-		elif original_voice["assigned_voice"] != updated_voice["assigned_voice"]:
-			# if speaker ID didn't change but we set new assigned voice,
-			# we need to have new speaker ID and find what gender it is from
-			# voice assigner
-			combined_voice["assigned_voice"] = updated_voice["assigned_voice"]
-			combined_voice["speaker_id"] = None
-			combined_voice["ssml_gender"] = updated_voice["ssml_gender"]
-			for assigned_speaker_id, assigned_voice in self.dubber._voice_assigner.assigned_voices:
-				if assigned_voice == updated_voice["assigned_voice"]:
-					combined_voice["speaker_id"] = assigned_speaker_id
-					for gender_speaker_id, ssml_gender in self.dubber._voice_assigner._unique_speaker_mapping.items():
-						if gender_speaker_id == assigned_speaker_id:
-							combined_voice["ssml_gender"] = ssml_gender
-							break
-					break
-		elif original_voice["ssml_gender"] != updated_voice["ssml_gender"]:
-			# if you changed gender only, we generate new speaker id
-			# and assign not-yet-assigned voice to it
-			combined_voice["ssml_gender"] = updated_voice["ssml_gender"]
-			combined_voice["assigned_voice"] = None
-			combined_voice["speaker_id"] = None
-		return combined_voice
+	def retranslate_utterance(self, utterance:Mapping[str,str|float]):
+		return self.dubber._run_translation_on_single_utterance(utterance)
 
-	def _redub_modified_utterances(self, original_metadata, updated_metadata):
+	def retranscribe_utterance(self, utterance:Mapping[str,str|float]):
+		verified_utterance = audio_processing.verify_modified_audio_chunk(
+			audio_file=self.dubber.preprocessing_output.audio_file,
+			utterance=utterance,
+			output_directory=self.dubber.output_directory,
+		)
+		retranscribed_utterance = self.dubber._run_speech_to_text_on_single_utterance(
+			verified_utterance
+		)
+		return retranscribed_utterance
+
+	def redub_modified_utterances(self, original_metadata, updated_metadata):
 		self._reinit_text_to_speech()
 		#non-interactive copy of Dubber._verify_and_redub_utterances
 		edited_utterances = self.dubber.text_to_speech.dub_edited_utterances(
