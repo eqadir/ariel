@@ -506,6 +506,12 @@ limitations under the License.
                         <div class="translated-text">
                           {{ dubbing.text }}
                         </div>
+                        <div>
+                          <span class="label">Start:</span> {{ dubbing.start }}
+                        </div>
+                        <div>
+                          <span class="label">End:</span> {{ dubbing.end }}
+                        </div>
                       } @else {
                         <mat-form-field class="full-width edit-textarea">
                           <mat-label>Original text</mat-label>
@@ -513,6 +519,22 @@ limitations under the License.
                             matInput
                             [(ngModel)]="dubbing.text"
                           ></textarea>
+                        </mat-form-field>
+                        <mat-form-field class="full-width">
+                          <mat-label>Start</mat-label>
+                          <input
+                            matInput
+                            type="number"
+                            [(ngModel)]="dubbing.start"
+                          />
+                        </mat-form-field>
+                        <mat-form-field class="full-width">
+                          <mat-label>End</mat-label>
+                          <input
+                            matInput
+                            type="number"
+                            [(ngModel)]="dubbing.end"
+                          />
                         </mat-form-field>
                       }
                     </mat-card-content>
@@ -538,12 +560,6 @@ limitations under the License.
                         </div>
                         <div class="translated-text">
                           {{ dubbing.translated_text }}
-                        </div>
-                        <div>
-                          <span class="label">Start:</span> {{ dubbing.start }}
-                        </div>
-                        <div>
-                          <span class="label">End:</span> {{ dubbing.end }}
                         </div>
                         <div>
                           <span class="label">Speaker ID:</span>
@@ -578,22 +594,6 @@ limitations under the License.
                             matInput
                             [(ngModel)]="dubbing.translated_text"
                           ></textarea>
-                        </mat-form-field>
-                        <mat-form-field class="full-width">
-                          <mat-label>Start</mat-label>
-                          <input
-                            matInput
-                            type="number"
-                            [(ngModel)]="dubbing.start"
-                          />
-                        </mat-form-field>
-                        <mat-form-field class="full-width">
-                          <mat-label>End</mat-label>
-                          <input
-                            matInput
-                            type="number"
-                            [(ngModel)]="dubbing.end"
-                          />
                         </mat-form-field>
                         <mat-form-field class="full-width">
                           <mat-label>Speaker ID</mat-label>
