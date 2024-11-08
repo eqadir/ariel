@@ -441,27 +441,32 @@ limitations under the License.
               formControlName="use_elevenlabs"
               >Use ElevenLabs</mat-checkbox
             >
-            <mat-form-field class="full-width">
-              <mat-label>ElevenLabs API token</mat-label>
-              <input
-                matInput
-                placeholder="Get an API token at ElevenLabs"
-                formControlName="elevenlabs_token"
-                autocomplete="on"
-              />
-            </mat-form-field>
-            <mat-checkbox
-              class="full-width"
-              matTooltip="Use ElevenLabs API to clone source voices. WARNING: This ElevenLabs API functionality might require higher tier pricing."
-              formControlName="elevenlabs_clone_voices"
-              >Clone voices</mat-checkbox
-            >
-            <mat-checkbox
-              class="full-width"
-              matTooltip="Remove all the voices that were cloned with ELevenLabs during the dubbing process."
-              formControlName="elevenlabs_remove_cloned_voices"
-              >Remove cloned voices</mat-checkbox
-            >
+            @if (configFormGroup.value.use_elevenlabs) {
+              <mat-form-field class="full-width">
+                <mat-label>ElevenLabs API token</mat-label>
+                <input
+                  matInput
+                  placeholder="Get an API token at ElevenLabs"
+                  formControlName="elevenlabs_token"
+                  autocomplete="on"
+                  [required]="
+                    configFormGroup.value.use_elevenlabs ? true : false
+                  "
+                />
+              </mat-form-field>
+              <mat-checkbox
+                class="full-width"
+                matTooltip="Use ElevenLabs API to clone source voices. WARNING: This ElevenLabs API functionality might require higher tier pricing."
+                formControlName="elevenlabs_clone_voices"
+                >Clone voices</mat-checkbox
+              >
+              <mat-checkbox
+                class="full-width"
+                matTooltip="Remove all the voices that were cloned with ElevenLabs during the dubbing process."
+                formControlName="elevenlabs_remove_cloned_voices"
+                >Remove cloned voices</mat-checkbox
+              >
+            }
           </mat-expansion-panel>
         </mat-accordion>
         <br />
@@ -595,40 +600,44 @@ limitations under the License.
                             [(ngModel)]="dubbing.translated_text"
                           ></textarea>
                         </mat-form-field>
-                        <mat-form-field class="full-width">
-                          <mat-label>Speaker ID</mat-label>
-                          <input matInput [(ngModel)]="dubbing.speaker_id" />
-                        </mat-form-field>
-                        <mat-form-field class="full-width">
-                          <mat-label>SSML Gender</mat-label>
-                          <mat-select [(ngModel)]="dubbing.ssml_gender">
-                            <mat-option value="Male"> Male </mat-option>
-                            <mat-option value="Female">Female</mat-option>
-                          </mat-select>
-                        </mat-form-field>
-                        <mat-form-field class="full-width">
-                          <mat-label>Assigned Voice</mat-label>
-                          <input
-                            matInput
-                            [(ngModel)]="dubbing.assigned_voice"
-                          />
-                        </mat-form-field>
-                        <mat-form-field class="full-width">
-                          <mat-label>Pitch</mat-label>
-                          <input
-                            matInput
-                            type="number"
-                            [(ngModel)]="dubbing.pitch"
-                          />
-                        </mat-form-field>
-                        <mat-form-field class="full-width">
-                          <mat-label>Volume Gain (dB)</mat-label>
-                          <input
-                            matInput
-                            type="number"
-                            [(ngModel)]="dubbing.volume_gain_db"
-                          />
-                        </mat-form-field>
+                        @if (!configFormGroup.value.elevenlabs_clone_voices) {
+                          <mat-form-field class="full-width">
+                            <mat-label>Speaker ID</mat-label>
+                            <input matInput [(ngModel)]="dubbing.speaker_id" />
+                          </mat-form-field>
+                          <mat-form-field class="full-width">
+                            <mat-label>SSML Gender</mat-label>
+                            <mat-select [(ngModel)]="dubbing.ssml_gender">
+                              <mat-option value="Male"> Male </mat-option>
+                              <mat-option value="Female">Female</mat-option>
+                            </mat-select>
+                          </mat-form-field>
+                          <mat-form-field class="full-width">
+                            <mat-label>Assigned Voice</mat-label>
+                            <input
+                              matInput
+                              [(ngModel)]="dubbing.assigned_voice"
+                            />
+                          </mat-form-field>
+                          @if (!configFormGroup.value.use_elevenlabs) {
+                            <mat-form-field class="full-width">
+                              <mat-label>Pitch</mat-label>
+                              <input
+                                matInput
+                                type="number"
+                                [(ngModel)]="dubbing.pitch"
+                              />
+                            </mat-form-field>
+                            <mat-form-field class="full-width">
+                              <mat-label>Volume Gain (dB)</mat-label>
+                              <input
+                                matInput
+                                type="number"
+                                [(ngModel)]="dubbing.volume_gain_db"
+                              />
+                            </mat-form-field>
+                          }
+                        }
                         <mat-checkbox [(ngModel)]="dubbing.adjust_speed"
                           >Adjust speed</mat-checkbox
                         >
