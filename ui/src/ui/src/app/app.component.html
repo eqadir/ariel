@@ -622,14 +622,6 @@ limitations under the License.
                           />
                         </mat-form-field>
                         <mat-form-field class="full-width">
-                          <mat-label>Speed</mat-label>
-                          <input
-                            matInput
-                            type="number"
-                            [(ngModel)]="dubbing.speed"
-                          />
-                        </mat-form-field>
-                        <mat-form-field class="full-width">
                           <mat-label>Volume Gain (dB)</mat-label>
                           <input
                             matInput
@@ -640,6 +632,16 @@ limitations under the License.
                         <mat-checkbox [(ngModel)]="dubbing.adjust_speed"
                           >Adjust speed</mat-checkbox
                         >
+                        @if (dubbing.adjust_speed) {
+                          <mat-form-field class="full-width">
+                            <mat-label>Speed</mat-label>
+                            <input
+                              matInput
+                              type="number"
+                              [(ngModel)]="dubbing.speed"
+                            />
+                          </mat-form-field>
+                        }
                       }
                     </mat-card-content>
                     <mat-card-actions align="end">
