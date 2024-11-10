@@ -33,7 +33,7 @@ export class ApiCallsService implements ApiCalls {
         `Get from GCS called with the following config: ${data}, Retrydelay: ${retryDelay}, MaxRetries: ${maxRetries}`
       );
       let localFile: string;
-      let filename = data.split('/').pop();
+      const filename = data.split('/').pop();
       switch (filename) {
         case 'utterances.json':
           localFile = '/assets/sample_utterances.json';

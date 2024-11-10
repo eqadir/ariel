@@ -169,7 +169,7 @@ export class AppComponent {
           continue;
         if (key === 'speaker_id') {
           // Case: Existing speaker with gender and voice assigned from backend.
-          if (this.speakers.hasOwnProperty(newDubbingValues[key])) {
+          if (newDubbingValues[key] in this.speakers) {
             this.dubbedInstances[index]['assigned_voice'] =
               this.speakers[newDubbingValues[key]].voice;
             this.dubbedInstances[index]['ssml_gender'] =
@@ -248,9 +248,8 @@ export class AppComponent {
   ): ValidationErrors | null => {
     const speaker_id = control.value;
     // console.error(`SPEAKER ID VALIDATION for ${speaker_id}`);
-    let result = this.speakers.hasOwnProperty(speaker_id)
-      ? { existingSpeaker: true }
-      : null;
+    const result =
+      speaker_id in this.speakers ? { existingSpeaker: true } : null;
     // console.log(result);
     return result;
   };
@@ -436,7 +435,7 @@ export class AppComponent {
                   this.apiCalls
                     .getFromGcs(`${this.gcsFolder}/voices.json`, 15000, 2)
                     .subscribe(response => {
-                      let voiceJson = JSON.parse(response);
+                      const voiceJson = JSON.parse(response);
                       this.availableVoices = { ...voiceJson };
                       console.log(
                         `Available voices: ${JSON.stringify(this.availableVoices)}`
