@@ -15,6 +15,7 @@
  */
 import { Component, inject, signal, WritableSignal } from '@angular/core';
 import {
+  FormArray,
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
@@ -55,6 +56,9 @@ interface Dubbing {
   adjust_speed: boolean;
   editing?: boolean;
 }
+interface Voice {
+  [voiceName: string]: string;
+}
 
 @Component({
   selector: 'app-root',
@@ -85,6 +89,9 @@ export class AppComponent {
   title = 'Ariel UI';
   readonly preferredVoices = signal([]);
   readonly noDubbingPhrases = signal([]);
+  availableVoices: Voice = {};
+  objectKeys = Object.keys;
+  speakerIds: string[] = [];
   loadingTranslations = false;
   loadingDubbedVideo = false;
   dubbingCompleted = false;
@@ -93,6 +100,7 @@ export class AppComponent {
   dubbedInstances!: Dubbing[];
   dubbedUrl: string = '';
   gcsFolder: string = '';
+  editSpeakerList = false;
 
   constructor(private apiCalls: ApiCallsService) {}
 
@@ -105,6 +113,17 @@ export class AppComponent {
       // Handle the case where the input element or files are null/undefined.
       console.error('No file selected or target is not an input element.');
     }
+  }
+
+  onVoiceChange(event: any, dubbing: Dubbing) {
+    // Update voice and gender on dubbing.
+    const voiceName = event.target.value.split(' - ')[0];
+    const gender = event.target.value.split(' - ')[1];
+    dubbing.assigned_voice = voiceName;
+    dubbing.ssml_gender = gender;
+    console.log(
+      `Assigned voice ${voiceName} and gender ${gender} to dubbing ${JSON.stringify(dubbing)}`
+    );
   }
 
   playAudio(url: string) {
@@ -169,6 +188,10 @@ export class AppComponent {
     dubbing.editing = !dubbing.editing;
   }
 
+  toggleSpeakerEdit(): void {
+    this.editSpeakerList = !this.editSpeakerList;
+  }
+
   private _formBuilder = inject(FormBuilder);
 
   configFormGroup = this._formBuilder.group({
@@ -201,8 +224,35 @@ export class AppComponent {
     elevenlabs_remove_cloned_voices: [false],
   });
   translationsFormGroup = this._formBuilder.group({
-    secondCtrl: ['', Validators.required],
+    dubbings: new FormArray([]),
   });
+
+  createDubbingObjectFormGroup(dubbing: Dubbing): void {
+    const dubbingFormGroup = this._formBuilder.group({
+      start: [dubbing.start, Validators.required],
+      end: [dubbing.end, Validators.required],
+      path: [dubbing.path, Validators.required],
+      text: [dubbing.text, Validators.required],
+      for_dubbing: [dubbing.for_dubbing, Validators.required],
+      speaker_id: [dubbing.speaker_id, Validators.required],
+      ssml_gender: [dubbing.ssml_gender, Validators.required],
+      dubbed_path: [dubbing.dubbed_path, Validators.required],
+      translated_text: [dubbing.translated_text, Validators.required],
+      assigned_voice: [dubbing.assigned_voice, Validators.required],
+      pitch: [dubbing.pitch, Validators.required],
+      speed: [dubbing.speed, Validators.required],
+      volume_gain_db: [dubbing.volume_gain_db, Validators.required],
+      adjust_speed: [dubbing.adjust_speed, Validators.required],
+      editing: [dubbing.editing, Validators.required],
+    });
+    (this.translationsFormGroup.get('dubbings') as FormArray).push(
+      dubbingFormGroup
+    );
+  }
+
+  get dubbingFormArray(): FormArray {
+    return this.translationsFormGroup.get('dubbings') as FormArray;
+  }
 
   removeChipEntry(chipsCollection: WritableSignal<string[]>, entry: string) {
     chipsCollection.update(chips => {
@@ -303,7 +353,23 @@ export class AppComponent {
                   this.dubbedInstances = JSON.parse(
                     response
                   ) as unknown as Dubbing[];
-                  this.loadingTranslations = false;
+                  this.dubbedInstances.forEach(instance => {
+                    this.createDubbingObjectFormGroup(instance);
+                  });
+                  const speakerSet = new Set(
+                    this.dubbedInstances.map(dubbing => dubbing.speaker_id)
+                  );
+                  this.speakerIds = Array.from(speakerSet);
+                  this.apiCalls
+                    .getFromGcs(`${this.gcsFolder}/voices.json`, 15000, 2)
+                    .subscribe(response => {
+                      let voiceJson = JSON.parse(response);
+                      this.availableVoices = { ...voiceJson };
+                      console.log(
+                        `Available voices: ${JSON.stringify(this.availableVoices)}`
+                      );
+                      this.loadingTranslations = false;
+                    });
                 });
             });
         });

@@ -30,13 +30,24 @@ export class ApiCallsService implements ApiCalls {
   getFromGcs(data: string, retryDelay = 0, maxRetries = 0): Observable<string> {
     return new Observable(subscriber => {
       console.log(
-        `Generating utterances with the following config: ${data}, Retrydelay: ${retryDelay}, MaxRetries: ${maxRetries}`
+        `Get from GCS called with the following config: ${data}, Retrydelay: ${retryDelay}, MaxRetries: ${maxRetries}`
       );
+      let localFile: string;
+      let filename = data.split('/').pop();
+      switch (filename) {
+        case 'utterances.json':
+          localFile = '/assets/sample_utterances.json';
+          break;
+        case 'voices.json':
+          localFile = '/assets/sample_voices.json';
+          break;
+        default:
+          localFile = '/assets/sample_utterances.json';
+      }
+
       setTimeout(() => {
         this.ngZone.run(async () => {
-          subscriber.next(
-            await this.loadLocalJsonFile('/assets/sample_utterances.json')
-          );
+          subscriber.next(await this.loadLocalJsonFile(localFile));
           subscriber.complete();
         });
       }, 2000);
@@ -88,7 +99,7 @@ export class ApiCallsService implements ApiCalls {
     contentType: string
   ): Observable<string[]> {
     console.log(
-      `Running locally. Fake file uploaded: ${file.name}} with contentType ${contentType} `
+      `Running locally. Fake file uploaded: ${file.name} with contentType ${contentType} `
     );
     return of([folder, filename]);
   }

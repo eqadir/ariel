@@ -480,6 +480,8 @@ limitations under the License.
     </mat-step>
     <mat-step [stepControl]="translationsFormGroup">
       <ng-template matStepLabel>Review translations</ng-template>
+      <!-- <form [formGroup]="translationsFormGroup">
+        <div formArrayName="dubbings"> -->
       <div class="mat-expansion-panel-body">
         <div class="container">
           @if (loadingTranslations) {
@@ -494,7 +496,7 @@ limitations under the License.
                 <span style="font-weight: bold">Translated language</span>
               </div>
             </div>
-            @for (dubbing of dubbedInstances; track dubbing) {
+            @for (dubbing of dubbedInstances; track dubbing; let i = $index) {
               <div class="row">
                 <div class="col">
                   <mat-card style="flex: 1">
@@ -512,7 +514,8 @@ limitations under the License.
                           {{ dubbing.text }}
                         </div>
                         <div>
-                          <span class="label">Start:</span> {{ dubbing.start }}
+                          <span class="label">Start:</span>
+                          {{ dubbing.start }}
                         </div>
                         <div>
                           <span class="label">End:</span> {{ dubbing.end }}
@@ -579,10 +582,12 @@ limitations under the License.
                           {{ dubbing.assigned_voice }}
                         </div>
                         <div>
-                          <span class="label">Pitch:</span> {{ dubbing.pitch }}
+                          <span class="label">Pitch:</span>
+                          {{ dubbing.pitch }}
                         </div>
                         <div>
-                          <span class="label">Speed:</span> {{ dubbing.speed }}
+                          <span class="label">Speed:</span>
+                          {{ dubbing.speed }}
                         </div>
                         <div>
                           <span class="label">Volume Gain (dB):</span>
@@ -601,11 +606,52 @@ limitations under the License.
                           ></textarea>
                         </mat-form-field>
                         @if (!configFormGroup.value.elevenlabs_clone_voices) {
-                          <mat-form-field class="full-width">
-                            <mat-label>Speaker ID</mat-label>
-                            <input matInput [(ngModel)]="dubbing.speaker_id" />
-                          </mat-form-field>
-                          <mat-form-field class="full-width">
+                          @if (editSpeakerList) {
+                            <mat-form-field class="full-width">
+                              <mat-label>New speaker ID</mat-label>
+                              <input matInput [required]="editSpeakerList" />
+                            </mat-form-field>
+                            <mat-form-field class="full-width">
+                              <mat-label>Assigned Voice</mat-label>
+                              <select
+                                matNativeControl
+                                (change)="onVoiceChange($event, dubbing)"
+                              >
+                                @for (
+                                  key of objectKeys(availableVoices);
+                                  track key
+                                ) {
+                                  <option>
+                                    {{ key }} - {{ availableVoices[key] }}
+                                  </option>
+                                }
+                              </select></mat-form-field
+                            >
+                            <button mat-button>Add speaker</button>
+                            <button mat-button (click)="toggleSpeakerEdit()">
+                              Cancel
+                            </button>
+                          } @else {
+                            <mat-form-field class="full-width">
+                              <mat-label>Speaker ID</mat-label>
+                              <mat-select [(ngModel)]="dubbing.speaker_id">
+                                @for (
+                                  speakerId of speakerIds;
+                                  track speakerId
+                                ) {
+                                  <mat-option value="{{ speakerId }}">
+                                    {{ speakerId }} ({{
+                                      dubbing.assigned_voice
+                                    }})
+                                  </mat-option>
+                                }
+                              </mat-select>
+                            </mat-form-field>
+                            <button mat-button (click)="toggleSpeakerEdit()">
+                              New speaker
+                            </button>
+                          }
+                          <!-- <mat-form-field class="full-width">
                             <mat-label>SSML Gender</mat-label>
                             <mat-select [(ngModel)]="dubbing.ssml_gender">
                               <mat-option value="Male"> Male </mat-option>
@@ -618,7 +664,7 @@ limitations under the License.
                               matInput
                               [(ngModel)]="dubbing.assigned_voice"
                             />
-                          </mat-form-field>
+                          </mat-form-field> -->
                           @if (!configFormGroup.value.use_elevenlabs) {
                             <mat-form-field class="full-width">
                               <mat-label>Pitch</mat-label>
@@ -680,6 +726,8 @@ limitations under the License.
           Dub video
         </button>
       </div>
+      <!-- </div>
+      </form> -->
     </mat-step>
     <mat-step>
       <ng-template matStepLabel>Download videos</ng-template>
