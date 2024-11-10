@@ -141,6 +141,24 @@ export class AppComponent {
     }
   }
 
+  toggleToDub(dubbing: Dubbing): void {
+    dubbing.for_dubbing = !dubbing.for_dubbing;
+  }
+
+  saveDubbing(index: number) {
+    // update this.dubbedInstances based on changes from the form.
+    const dubbings = this.translationsFormGroup.value['dubbings'];
+    if (dubbings && dubbings[index]) {
+      const newDubbingValues: Dubbing = dubbings[index];
+      for (let key in newDubbingValues) {
+        if (key == 'editing') continue;
+        this.dubbedInstances[index][key as keyof Dubbing] =
+          dubbings[index][key];
+      }
+    }
+    this.updateTranslations();
+  }
+
   updateTranslations() {
     this.loadingTranslations = true;
     // Upload new utterances_preview file.
@@ -312,7 +330,7 @@ export class AppComponent {
         // Skip input_video as backend has own logic for it.
         continue;
       }
-      if (value !== '') {
+      if (value !== '' || value !== null || value !== undefined) {
         result[key] = value;
       }
     }
