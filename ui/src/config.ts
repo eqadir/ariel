@@ -15,8 +15,8 @@
  */
 export const CONFIG = {
   cloudStorage: {
-    bucket: 'cse-kubarozek-sandbox-ariel-us',
-    // bucket: 'gps-generative-ai-ariel-us',
+    // bucket: 'cse-kubarozek-sandbox-ariel-us',
+    bucket: 'gps-generative-ai-ariel-us',
     endpointBase: 'https://storage.googleapis.com/storage/v1',
     uploadEndpointBase: 'https://storage.googleapis.com/upload/storage/v1',
     authenticatedEndpointBase: 'https://storage.mtls.cloud.google.com',

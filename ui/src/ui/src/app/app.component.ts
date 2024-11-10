@@ -160,7 +160,7 @@ export class AppComponent {
     const dubbings = this.translationsFormGroup.value['dubbings'];
     if (dubbings && dubbings[index]) {
       const newDubbingValues: Dubbing = dubbings[index];
-      for (let key in newDubbingValues) {
+      for (const key in newDubbingValues) {
         if (
           key === 'editing' ||
           key === 'assigned_voice' ||
