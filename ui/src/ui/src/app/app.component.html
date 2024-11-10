@@ -631,6 +631,15 @@ limitations under the License.
                                     formControlName="speaker_id"
                                     [required]="editSpeakerList"
                                   />
+                                  <!-- @if (
+                                    translationsFormGroup
+                                      .get('speaker_id')
+                                      ?.hasError('existingSpeaker')
+                                  ) {
+                                  <mat-hint class="danger alert-danger"
+                                    >Speaker ID exists already.</mat-hint
+                                  >
+                                  } -->
                                 </mat-form-field>
                                 <mat-form-field class="full-width">
                                   <mat-label>Assigned Voice</mat-label>
@@ -638,19 +647,17 @@ limitations under the License.
                                     matNativeControl
                                     id="assigned_voice-{{ i }}"
                                     formControlName="assigned_voice"
-                                    (change)="onVoiceChange($event, dubbing)"
                                   >
                                     @for (
                                       key of objectKeys(availableVoices);
                                       track key
                                     ) {
-                                      <option>
+                                      <option value="{{ key }}">
                                         {{ key }} - {{ availableVoices[key] }}
                                       </option>
                                     }
                                   </select></mat-form-field
                                 >
-                                <button mat-button>Add speaker</button>
                                 <button
                                   mat-button
                                   (click)="toggleSpeakerEdit()"
@@ -665,13 +672,14 @@ limitations under the License.
                                     formControlName="speaker_id"
                                   >
                                     @for (
-                                      speakerId of speakerIds;
+                                      speakerId of objectKeys(speakers);
                                       track speakerId
                                     ) {
                                       <mat-option value="{{ speakerId }}">
                                         {{ speakerId }} ({{
-                                          dubbing.assigned_voice
-                                        }})
+                                          speakers[speakerId]['voice']
+                                        }}
+                                        - {{ speakers[speakerId]['gender'] }})
                                       </mat-option>
                                     }
                                   </mat-select>

@@ -15,10 +15,13 @@
  */
 import { Component, inject, signal, WritableSignal } from '@angular/core';
 import {
+  AbstractControl,
   FormArray,
   FormBuilder,
   FormsModule,
   ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -60,6 +63,13 @@ interface Voice {
   [voiceName: string]: string;
 }
 
+interface Speaker {
+  [id: string]: {
+    voice: string;
+    gender: string;
+  };
+}
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -91,7 +101,7 @@ export class AppComponent {
   readonly noDubbingPhrases = signal([]);
   availableVoices: Voice = {};
   objectKeys = Object.keys;
-  speakerIds: string[] = [];
+  speakers: Speaker = {};
   loadingTranslations = false;
   loadingDubbedVideo = false;
   dubbingCompleted = false;
@@ -115,16 +125,16 @@ export class AppComponent {
     }
   }
 
-  onVoiceChange(event: any, dubbing: Dubbing) {
-    // Update voice and gender on dubbing.
-    const voiceName = event.target.value.split(' - ')[0];
-    const gender = event.target.value.split(' - ')[1];
-    dubbing.assigned_voice = voiceName;
-    dubbing.ssml_gender = gender;
-    console.log(
-      `Assigned voice ${voiceName} and gender ${gender} to dubbing ${JSON.stringify(dubbing)}`
-    );
-  }
+  // onVoiceChange(event: any, dubbing: Dubbing) {
+  //   // Update voice and gender on dubbing.
+  //   const voiceName = event.target.value.split(' - ')[0];
+  //   const gender = event.target.value.split(' - ')[1];
+  //   dubbing.assigned_voice = voiceName;
+  //   dubbing.ssml_gender = gender;
+  //   console.log(
+  //     `Assigned voice ${voiceName} and gender ${gender} to dubbing ${JSON.stringify(dubbing)}`
+  //   );
+  // }
 
   playAudio(url: string) {
     console.log(`Received request to play audio from ${url}`);
@@ -151,10 +161,33 @@ export class AppComponent {
     if (dubbings && dubbings[index]) {
       const newDubbingValues: Dubbing = dubbings[index];
       for (let key in newDubbingValues) {
-        if (key == 'editing') continue;
+        if (
+          key === 'editing' ||
+          key === 'assigned_voice' ||
+          key === 'ssml_gender'
+        )
+          continue;
+        if (key === 'speaker_id') {
+          // Case: Existing speaker with gender and voice assigned from backend.
+          if (this.speakers.hasOwnProperty(newDubbingValues[key])) {
+            this.dubbedInstances[index]['assigned_voice'] =
+              this.speakers[newDubbingValues[key]].voice;
+            this.dubbedInstances[index]['ssml_gender'] =
+              this.speakers[newDubbingValues[key]].gender;
+          } else {
+            // Case: New speaker with user-assigned voice and its gender.
+            this.dubbedInstances[index]['assigned_voice'] =
+              newDubbingValues['assigned_voice'];
+            this.dubbedInstances[index]['ssml_gender'] =
+              this.availableVoices[newDubbingValues['assigned_voice']];
+          }
+          this.dubbedInstances[index]['speaker_id'] = newDubbingValues[key];
+        }
         this.dubbedInstances[index][key as keyof Dubbing] =
           dubbings[index][key];
       }
+      console.log(dubbings[index]);
+      console.log(this.dubbedInstances[index]);
     }
     this.updateTranslations();
   }
@@ -210,6 +243,18 @@ export class AppComponent {
     this.editSpeakerList = !this.editSpeakerList;
   }
 
+  existingSpeakerValidator: ValidatorFn = (
+    control: AbstractControl
+  ): ValidationErrors | null => {
+    const speaker_id = control.value;
+    // console.error(`SPEAKER ID VALIDATION for ${speaker_id}`);
+    let result = this.speakers.hasOwnProperty(speaker_id)
+      ? { existingSpeaker: true }
+      : null;
+    // console.log(result);
+    return result;
+  };
+
   private _formBuilder = inject(FormBuilder);
 
   configFormGroup = this._formBuilder.group({
@@ -253,6 +298,10 @@ export class AppComponent {
       text: [dubbing.text, Validators.required],
       for_dubbing: [dubbing.for_dubbing, Validators.required],
       speaker_id: [dubbing.speaker_id, Validators.required],
+      // speaker_id: [
+      //   dubbing.speaker_id,
+      //   [Validators.required, this.existingSpeakerValidator],
+      // ],
       ssml_gender: [dubbing.ssml_gender, Validators.required],
       dubbed_path: [dubbing.dubbed_path, Validators.required],
       translated_text: [dubbing.translated_text, Validators.required],
@@ -374,10 +423,16 @@ export class AppComponent {
                   this.dubbedInstances.forEach(instance => {
                     this.createDubbingObjectFormGroup(instance);
                   });
-                  const speakerSet = new Set(
-                    this.dubbedInstances.map(dubbing => dubbing.speaker_id)
+                  const speakerSet = new Map(
+                    this.dubbedInstances.map(dubbing => [
+                      dubbing.speaker_id,
+                      {
+                        gender: dubbing.ssml_gender,
+                        voice: dubbing.assigned_voice,
+                      },
+                    ])
                   );
-                  this.speakerIds = Array.from(speakerSet);
+                  this.speakers = Object.fromEntries(speakerSet);
                   this.apiCalls
                     .getFromGcs(`${this.gcsFolder}/voices.json`, 15000, 2)
                     .subscribe(response => {
