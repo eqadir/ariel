@@ -599,17 +599,19 @@ limitations under the License.
                               <span class="label">Assigned Voice:</span>
                               {{ dubbing.assigned_voice }}
                             </div>
-                            <div>
-                              <span class="label">Pitch:</span>
-                              {{ dubbing.pitch }}
-                            </div>
+                            @if (!configFormGroup.value.use_elevenlabs) {
+                              <div>
+                                <span class="label">Pitch:</span>
+                                {{ dubbing.pitch }}
+                              </div>
+                              <div>
+                                <span class="label">Volume Gain (dB):</span>
+                                {{ dubbing.volume_gain_db }}
+                              </div>
+                            }
                             <div>
                               <span class="label">Speed:</span>
                               {{ dubbing.speed }}
-                            </div>
-                            <div>
-                              <span class="label">Volume Gain (dB):</span>
-                              {{ dubbing.volume_gain_db }}
                             </div>
                             <div>
                               <span class="label">Adjust Speed:</span>

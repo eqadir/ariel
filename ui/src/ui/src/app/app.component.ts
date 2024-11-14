@@ -40,7 +40,6 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { CONFIG } from '../../../config';
 import { ApiCallsService } from './api-calls/api-calls.service';
-import { InputChipsComponent } from './input-chips.component';
 
 interface Dubbing {
   start: number;
@@ -85,7 +84,6 @@ interface Speaker {
     MatCheckboxModule,
     MatTooltipModule,
     MatSliderModule,
-    InputChipsComponent,
     MatExpansionModule,
     MatStepperModule,
     ReactiveFormsModule,
@@ -165,7 +163,8 @@ export class AppComponent {
         if (
           key === 'editing' ||
           key === 'assigned_voice' ||
-          key === 'ssml_gender'
+          key === 'ssml_gender' ||
+          key === 'for_dubbing'
         )
           continue;
         if (key === 'speaker_id') {
@@ -198,13 +197,23 @@ export class AppComponent {
     this.updateTranslations();
   }
 
+  getCleanUtterances(utterances: Dubbing[]) {
+    utterances.forEach(dubbing => {
+      if (dubbing.editing) {
+        delete dubbing.editing;
+      }
+    });
+    return utterances;
+  }
+
   updateTranslations() {
     this.loadingTranslations = true;
     // Upload new utterances_preview file.
+    const cleanUtterances = this.getCleanUtterances(this.dubbedInstances);
     this.apiCalls
       .postToGcs(
         this.jsonFile(
-          JSON.stringify(this.dubbedInstances),
+          JSON.stringify(cleanUtterances),
           'utterances_preview.json'
         ),
         this.gcsFolder,
@@ -324,11 +333,11 @@ export class AppComponent {
       dubbed_path: [dubbing.dubbed_path, Validators.required],
       translated_text: [dubbing.translated_text, Validators.required],
       assigned_voice: [dubbing.assigned_voice, Validators.required],
-      pitch: [dubbing.pitch, Validators.required],
+      pitch: [dubbing.pitch],
       speed: [dubbing.speed, Validators.required],
-      volume_gain_db: [dubbing.volume_gain_db, Validators.required],
+      volume_gain_db: [dubbing.volume_gain_db],
       adjust_speed: [dubbing.adjust_speed, Validators.required],
-      editing: [dubbing.editing, Validators.required],
+      editing: [dubbing.editing],
     });
     (this.translationsFormGroup.get('dubbings') as FormArray).push(
       dubbingFormGroup
