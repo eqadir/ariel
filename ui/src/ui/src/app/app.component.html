@@ -902,14 +902,7 @@ limitations under the License.
           >
         }
         <button mat-button matStepperPrevious>Back</button>
-        <button
-          mat-button
-          (click)="
-            translationsFormGroup.reset();
-            dubbedInstances.length = 0;
-            stepper.selectedIndex = 0
-          "
-        >
+        <button mat-button (click)="stepper.selectedIndex = 0">
           Dub another video
         </button>
       </div>
