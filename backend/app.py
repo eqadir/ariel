@@ -185,18 +185,12 @@ class GcpDubbingProcessor:
 			updated_start_end = (updated["start"], updated["end"])
 			original_text:str = original["text"]
 			updated_text:str = updated["text"]
-			original_voice = {"speaker_id":original["speaker_id"], "assigned_voice": original["assigned_voice"], "ssml_gender": original["ssml_gender"]}
-			updated_voice = {"speaker_id":updated["speaker_id"], "assigned_voice": updated["assigned_voice"], "ssml_gender": updated["ssml_gender"]}
 			if original != updated:
 				logging.info(f"Found updated utterance at index {edit_index}")
 				if original_start_end != updated_start_end:
 					updated = self.retranscribe_utterance(updated)
 				if original_text != updated_text or original_start_end != updated_start_end:
 					updated = self.retranslate_utterance(updated)
-				if original_voice != updated_voice:
-					updated["speaker_id"] = original["speaker_id"]
-					updated["assigned_voice"] = original["assigned_voice"]
-					updated["ssml_gender"] = original["ssml_gender"]
 				edited_metadata.append((edit_index, updated))
 
 		logging.info(f"Found {len(edited_metadata)} edited utterances")
