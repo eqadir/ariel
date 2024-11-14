@@ -160,6 +160,7 @@ export class AppComponent {
     const dubbings = this.translationsFormGroup.value['dubbings'];
     if (dubbings && dubbings[index]) {
       const newDubbingValues: Dubbing = dubbings[index];
+      this.editSpeakerList = false; // Reset speaker edit view for the dubbing.
       for (const key in newDubbingValues) {
         if (
           key === 'editing' ||
@@ -176,6 +177,11 @@ export class AppComponent {
               this.speakers[newDubbingValues[key]].gender;
           } else {
             // Case: New speaker with user-assigned voice and its gender.
+            //  Add new speaker to our speaker list.
+            this.speakers[newDubbingValues[key]] = {
+              voice: newDubbingValues['assigned_voice'],
+              gender: this.availableVoices[newDubbingValues['assigned_voice']],
+            };
             this.dubbedInstances[index]['assigned_voice'] =
               newDubbingValues['assigned_voice'];
             this.dubbedInstances[index]['ssml_gender'] =
@@ -241,6 +247,19 @@ export class AppComponent {
 
   toggleSpeakerEdit(): void {
     this.editSpeakerList = !this.editSpeakerList;
+  }
+
+  toggleElevenLabs(): void {
+    this.configFormGroup
+      .get('use_elevenlabs')
+      ?.valueChanges.subscribe(checked => {
+        if (!checked) {
+          this.configFormGroup.patchValue({
+            elevenlabs_clone_voices: false,
+            elevenlabs_remove_cloned_voices: false,
+          });
+        }
+      });
   }
 
   existingSpeakerValidator: ValidatorFn = (

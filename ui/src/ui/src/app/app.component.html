@@ -439,6 +439,7 @@ limitations under the License.
               class="full-width"
               matTooltip="use ElevenLabs API for the highest quality voiceover. WARNING: ElevenLabs API is a paid solution and will generate extra costs."
               formControlName="use_elevenlabs"
+              (change)="toggleElevenLabs()"
               >Use ElevenLabs</mat-checkbox
             >
             @if (configFormGroup.value.use_elevenlabs) {
@@ -472,7 +473,12 @@ limitations under the License.
         <br />
         <div>
           <button mat-button matStepperPrevious>Back</button>
-          <button mat-button matStepperNext (click)="generateUtterances()">
+          <button
+            mat-button
+            matStepperNext
+            [disabled]="!configFormGroup.valid"
+            (click)="generateUtterances()"
+          >
             Generate translations
           </button>
         </div>
@@ -784,16 +790,25 @@ limitations under the License.
         <mat-spinner></mat-spinner>
         This could take up to 5 minutes...
       }
-      @if (dubbingCompleted && dubbedUrl !== '') {
-        <p>Video generation is completed.</p>
-        <video [src]="dubbedUrl" height="300" controls></video>
-        <a mat-button href="{{ dubbedUrl }}" download="dubbed_video.mp4"
-          >Download video</a
-        >
-      }
       <div>
+        @if (dubbingCompleted && dubbedUrl !== '') {
+          <p>Video generation is completed.</p>
+          <video [src]="dubbedUrl" height="300" controls></video>
+          <a mat-button href="{{ dubbedUrl }}" download="dubbed_video.mp4"
+            >Download video</a
+          >
+        }
         <button mat-button matStepperPrevious>Back</button>
-        <button mat-button (click)="stepper.reset()">Dub another video</button>
+        <button
+          mat-button
+          (click)="
+            translationsFormGroup.reset();
+            dubbedInstances.length = 0;
+            stepper.selectedIndex = 0
+          "
+        >
+          Dub another video
+        </button>
       </div>
     </mat-step>
   </mat-stepper>
