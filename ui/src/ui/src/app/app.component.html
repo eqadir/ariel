@@ -608,6 +608,23 @@ limitations under the License.
                                 <span class="label">Volume Gain (dB):</span>
                                 {{ dubbing.volume_gain_db }}
                               </div>
+                            } @else {
+                              <div>
+                                <span class="label">Stability:</span>
+                                {{ dubbing.stability }}
+                              </div>
+                              <div>
+                                <span class="label">Similarity Boost:</span>
+                                {{ dubbing.similarity_boost }}
+                              </div>
+                              <div>
+                                <span class="label">Style:</span>
+                                {{ dubbing.style }}
+                              </div>
+                              <div>
+                                <span class="label">Use speaker boost:</span>
+                                {{ dubbing.use_speaker_boost }}
+                              </div>
                             }
                             <div>
                               <span class="label">Speed:</span>
@@ -734,6 +751,90 @@ limitations under the License.
                                     value="{{ dubbing.volume_gain_db }}"
                                   />
                                 </mat-form-field>
+                              } @else {
+                                <div class="slider-label-container full-width">
+                                  <label
+                                    id="eleven-labs-stability-slider-label-{{
+                                      i
+                                    }}"
+                                    >Stability</label
+                                  >
+                                  <label class="slider-value-label">{{
+                                    elevenlabsStabilitySlider.value
+                                  }}</label>
+                                </div>
+                                <mat-slider
+                                  min="0"
+                                  max="1"
+                                  step="0.1"
+                                  class="full-width"
+                                >
+                                  <input
+                                    id="stability-{{ i }}"
+                                    matSliderThumb
+                                    value="0.9"
+                                    matTooltip="Lower stability values result in a higher emotional range."
+                                    formControlName="stability"
+                                    #elevenlabsStabilitySlider
+                                  />
+                                </mat-slider>
+                                <div class="slider-label-container full-width">
+                                  <label
+                                    id="eleven-labs-similarity-boost-slider-label-{{
+                                      i
+                                    }}"
+                                    >Similarity boost</label
+                                  >
+                                  <label class="slider-value-label">{{
+                                    elevenlabsSimilarityBoostSlider.value
+                                  }}</label>
+                                </div>
+                                <mat-slider
+                                  min="0"
+                                  max="1"
+                                  step="0.1"
+                                  class="full-width"
+                                >
+                                  <input
+                                    id="similarity-boost-{{ i }}"
+                                    matSliderThumb
+                                    value="0.5"
+                                    matTooltip="How closely should AI adhere to original voice. May lead to noise if original voice is of poor quality."
+                                    formControlName="similarity_boost"
+                                    #elevenlabsSimilarityBoostSlider
+                                  />
+                                </mat-slider>
+                                <div class="slider-label-container full-width">
+                                  <label
+                                    id="eleven-labs-style-slider-label-{{ i }}"
+                                    >Style Exaggeration</label
+                                  >
+                                  <label class="slider-value-label">{{
+                                    elevenlabsStyleSlider.value
+                                  }}</label>
+                                </div>
+                                <mat-slider
+                                  min="0"
+                                  max="1"
+                                  step="0.1"
+                                  class="full-width"
+                                >
+                                  <input
+                                    matSliderThumb
+                                    id="style-{{ i }}"
+                                    value="0"
+                                    matTooltip="Amplify the style of the original speaker. Consumes additional compute resources. Recommended to leave to 0."
+                                    formControlName="style"
+                                    #elevenlabsStyleSlider
+                                  />
+                                </mat-slider>
+                                <mat-checkbox
+                                  id="use_speaker_boost-{{ i }}"
+                                  class="full-width"
+                                  matTooltip="Boost similarity to original speaker. Increases latency."
+                                  formControlName="use_speaker_boost"
+                                  >Use speaker boost</mat-checkbox
+                                >
                               }
                             }
                             <mat-checkbox

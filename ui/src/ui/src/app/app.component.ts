@@ -57,6 +57,10 @@ interface Dubbing {
   volume_gain_db: number;
   adjust_speed: boolean;
   editing?: boolean;
+  stability?: number;
+  similarity_boost?: number;
+  style?: number;
+  use_speaker_boost?: boolean;
 }
 interface Voice {
   [voiceName: string]: string;
@@ -337,6 +341,10 @@ export class AppComponent {
       speed: [dubbing.speed, Validators.required],
       volume_gain_db: [dubbing.volume_gain_db],
       adjust_speed: [dubbing.adjust_speed, Validators.required],
+      stability: [0.9],
+      similarity_boost: [0.5],
+      style: [0.0],
+      use_speaker_boost: [true],
       editing: [dubbing.editing],
     });
     (this.translationsFormGroup.get('dubbings') as FormArray).push(
