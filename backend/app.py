@@ -158,6 +158,9 @@ class GcpDubbingProcessor:
 
 	def _render_preview(self):
 		self.dubber.preprocessing_output = self.preprocessing_artifacts
+		from os import listdir
+		#Re-sync status of potentially previously deleted utterances_preview.json from GCS
+		listdir(self.local_path)
 
 		original_utterances_file_path = f"{self.local_path}/{INITIAL_UTTERANCES_FILE_NAME}"
 		with open(original_utterances_file_path) as f:
@@ -243,7 +246,6 @@ class GcpDubbingProcessor:
 			output_directory=self.dubber.output_directory,
 			target_language=self.dubber.target_language,
 			preprocessing_output=dataclasses.asdict(self.dubber.preprocessing_output),
-			adjust_speed=self.dubber.adjust_speed,
 			use_elevenlabs=self.dubber.use_elevenlabs,
 			elevenlabs_model=self.dubber.elevenlabs_model,
 			elevenlabs_clone_voices=self.dubber.elevenlabs_clone_voices,

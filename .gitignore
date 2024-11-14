@@ -174,3 +174,6 @@ cython_debug/
 
 #backend testing
 backend/config.json
+backend/deploy-config.sh
+.config.json
+node_modules

@@ -1,12 +1,12 @@
 #!/bin/bash
-GCP_PROJECT_ID=$(gcloud config get project)
-export GCS_BUCKET=$GCP_PROJECT_ID-ariel-us
-export GCP_REGION=us-central1
-#Use Docker build while developing - don't assume end user has Docker installed
-# export different values in your shell to make it work locally. Defaults are for
-# deployment environment
-USE_CLOUD_BUILD=${USE_CLOUD_BUILD:=true}
-CONFIGURE_APIS_AND_ROLES=${CONFIGURE_APIS_AND_ROLES:=true}
+# Read config variables
+CONFIG_FILE="$(dirname $0)/deploy-config.sh"
+if [ ! -r $CONFIG_FILE ]; then
+  echo "ERROR: Config file '$CONFIG_FILE' not found. This file is needed to configure the application's settings."
+  echo "Please run 'npm run start' before attempting to run this script."
+  exit 1
+fi
+. $CONFIG_FILE
 
 gcloud config set project $GCP_PROJECT_ID
 gcloud services enable cloudresourcemanager.googleapis.com
@@ -134,17 +134,22 @@ else
     --add-volume-mount volume=ariel-bucket,mount-path=/tmp/ariel
 fi
 
-printf "\nINFO Setting up triggers from GCS to Ariel processor topic in Cloud Run"
+printf "\nINFO Setting up triggers from GCS to Ariel processor topic in Cloud Run\n"
 
-gcloud storage buckets notifications delete gs://$GCS_BUCKET
-gcloud storage buckets notifications create gs://$GCS_BUCKET --topic=ariel-topic --event-types="OBJECT_FINALIZE"
+NOTIFICATION_ETAG=$(gcloud storage buckets notifications list gs://$GCS_BUCKET --format='value("Notification Configuration".etag)')
+if [ -z "$NOTIFICATION_ETAG" ]; then
+  gcloud storage buckets notifications create gs://$GCS_BUCKET --topic=$PUBSUB_TOPIC --event-types="OBJECT_FINALIZE"
+fi
 
-SERVICE_URL=$(gcloud run services describe ariel-process --region $GCP_REGION --format='value(status.url)')
 
-gcloud pubsub subscriptions create ariel-process-subscription --topic ariel-topic \
-  --ack-deadline=600 \
-  --push-endpoint=$SERVICE_URL/ \
-  --push-auth-service-account="$COMPUTE_SERVICE_ACCOUNT"
+SUBSCRIPTION_NAME=$(gcloud pubsub subscriptions describe ariel-process-subscription --format='value(name)')
+if [ -z "$SUBSCRIPTION_NAME" ]; then
+  SERVICE_URL=$(gcloud run services describe ariel-process --region $GCP_REGION --format='value(status.url)')
+  gcloud pubsub subscriptions create ariel-process-subscription --topic $PUBSUB_TOPIC \
+    --ack-deadline=600 \
+    --push-endpoint=$SERVICE_URL/ \
+    --push-auth-service-account="$COMPUTE_SERVICE_ACCOUNT"
+fi
 
 test $? -eq 0 || exit
 

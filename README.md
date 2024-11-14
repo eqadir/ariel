@@ -140,3 +140,9 @@ Ariel leverages a powerful combination of state-of-the-art AI and audio processi
 *   **pyannote:** [https://github.com/pyannote/pyannote-audio](https://github.com/pyannote/pyannote-audio)
 *   **faster-whisper:** [https://github.com/SYSTRAN/faster-whisper](https://github.com/SYSTRAN/faster-whisper)
 *   **ElevenLabs:** [https://elevenlabs.io/docs/introduction](https://elevenlabs.io/docs/introduction)
+
+
+## Cloud-based Ariel
+For a more user-friendly experience, we're also providing an Ariel version that
+can be deployed onto Google Cloud Platform with a GUI. All the features of the
+Colab are available, with an
