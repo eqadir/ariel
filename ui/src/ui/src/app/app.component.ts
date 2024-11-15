@@ -214,6 +214,9 @@ export class AppComponent {
     this.loadingTranslations = true;
     // Upload new utterances_preview file.
     const cleanUtterances = this.getCleanUtterances(this.dubbedInstances);
+    console.log(
+      `Utterances preview generated and ready to be uploaded: ${cleanUtterances}`
+    );
     this.apiCalls
       .postToGcs(
         this.jsonFile(
@@ -243,8 +246,12 @@ export class AppComponent {
                   this.dubbedInstances = JSON.parse(
                     response
                   ) as unknown as Dubbing[];
+                  this.translationsFormGroup = this._formBuilder.group({
+                    dubbings: new FormArray([]),
+                  });
                   this.dubbedInstances.forEach(instance => {
                     instance.editing = false;
+                    this.createDubbingObjectFormGroup(instance);
                   });
                   this.loadingTranslations = false;
                 });
@@ -341,10 +348,10 @@ export class AppComponent {
       speed: [dubbing.speed, Validators.required],
       volume_gain_db: [dubbing.volume_gain_db],
       adjust_speed: [dubbing.adjust_speed, Validators.required],
-      stability: [0.9],
-      similarity_boost: [0.5],
-      style: [0.0],
-      use_speaker_boost: [true],
+      stability: [dubbing.stability],
+      similarity_boost: [dubbing.similarity_boost],
+      style: [dubbing.style],
+      use_speaker_boost: [dubbing.use_speaker_boost],
       editing: [dubbing.editing],
     });
     (this.translationsFormGroup.get('dubbings') as FormArray).push(
@@ -455,6 +462,9 @@ export class AppComponent {
                   this.dubbedInstances = JSON.parse(
                     response
                   ) as unknown as Dubbing[];
+                  this.translationsFormGroup = this._formBuilder.group({
+                    dubbings: new FormArray([]),
+                  });
                   this.dubbedInstances.forEach(instance => {
                     this.createDubbingObjectFormGroup(instance);
                   });
