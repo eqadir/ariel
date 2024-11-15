@@ -263,7 +263,7 @@ export class UserConfigManager {
     configReplace({
       regex: "<gcs-bucket>",
       replacement: gcsBucket,
-      paths: ["./backend/deploy-config.sh"],
+      paths: ["./backend/deploy-config.sh", "./ui/src/config.ts"],
     });
 
     configReplace({

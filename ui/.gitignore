@@ -5,3 +5,4 @@ build/
 .clasp*.json
 *.tgz
 .vscode/
+src/config.ts

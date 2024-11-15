@@ -37,7 +37,7 @@ import {
       type: "text",
       name: "gcsBucket",
       message: `Enter a GCS bucket name [${config.gcsBucket}]]:`,
-      initial: (prev:string) => `${prev}${GCS_BUCKET_NAME_SUFFIX}`,
+      initial: (prev:string) => config.gcsBucket || `${prev}${GCS_BUCKET_NAME_SUFFIX}`,
     },
     {
       type: "text",

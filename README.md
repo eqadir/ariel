@@ -145,4 +145,4 @@ Ariel leverages a powerful combination of state-of-the-art AI and audio processi
 ## Cloud-based Ariel
 For a more user-friendly experience, we're also providing an Ariel version that
 can be deployed onto Google Cloud Platform with a GUI. All the features of the
-Colab are available, with an
+Colab are available, with a simple deployment command **npm run deploy**
