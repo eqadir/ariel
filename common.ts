@@ -41,6 +41,8 @@ export interface PromptsResponse {
   gcsBucket?: string;
   configureApisAndRoles?: boolean;
   useCloudBuild?: boolean;
+  deployBackend?: boolean;
+  deployUi?: boolean;
 }
 
 class ClaspManager {
@@ -62,6 +64,12 @@ class ClaspManager {
       (await fs.exists(path.join(rootDir, ".clasp-dev.json"))) ||
       (await fs.exists(path.join(rootDir, "dist", ".clasp.json")))
     );
+  }
+
+  static extractSheetsLink(output: string) {
+    const sheetsLink = output.match(/Google Sheet: ([^\n]*)/);
+
+    return sheetsLink?.length ? sheetsLink[1] : "Not found";
   }
 
   static extractScriptLink(output: string) {
@@ -89,9 +97,6 @@ class ClaspManager {
       ],
       { encoding: "utf-8" }
     );
-    if (res.status !== 0){
-      throw res.error
-    }
 
     await fs.move(
       path.join(scriptRootDir, ".clasp.json"),
@@ -105,6 +110,7 @@ class ClaspManager {
     const output = res.output.join();
 
     return {
+      sheetLink: this.extractSheetsLink(output),
       scriptLink: this.extractScriptLink(output),
     };
   }
@@ -151,29 +157,42 @@ export class GcpDeploymentHandler {
   }
 }
 
-export class AppsScriptDeploymentHandler {
+export class UiDeploymentHandler {
   static async createScriptProject() {
     console.log();
     await ClaspManager.login();
+
     const claspConfigExists = await ClaspManager.isConfigured("./ui");
-    if (!claspConfigExists) {
-      console.log("Creating Apps Script Project...");
-      await ClaspManager.create("Ariel UI", "./dist", "./ui");
-    } else {
-      console.log("Using existing Apps Script Project");
+    if (claspConfigExists) {
+      return;
     }
+    console.log();
+    console.log("Creating Apps Script Project...");
+    const res = await ClaspManager.create("Ariel", "./dist", "./ui");
+    console.log();
+    console.log("IMPORTANT -> Google Sheets Link:", res.sheetLink);
+    console.log("IMPORTANT -> Apps Script Link:", res.scriptLink);
     console.log();
   }
 
   static deployUi() {
-    console.log("Deploying Apps Script...");
+    console.log("Deploying the UI Web App...");
     spawn.sync("npm run deploy-ui", { stdio: "inherit", shell: true });
+    const res = spawn.sync("cd ui && clasp undeploy -a && clasp deploy", {
+      stdio: "pipe",
+      shell: true,
+      encoding: "utf8",
+    });
+    const lastNonEmptyLine = res.output[1]
+      .split("\n")
+      .findLast((line: string) => line.trim().length > 0);
+    let webAppLink = lastNonEmptyLine.match(/- (.*) @.*/);
+    webAppLink = webAppLink?.length
+      ? `https://script.google.com/a/macros/google.com/s/${webAppLink[1]}/exec`
+      : "Could not extract UI Web App link from npm output! Please check the output manually.";
+    console.log();
+    console.log(`IMPORTANT -> UI Web App Link: ${webAppLink}`);
   }
-
-  // static async printProjectLinks(){
-  //   console.log(`IMPORTANT -> Apps Script Link: ${await ClaspManager.alreadyConfiguredScriptLink("./appsscript")}.`);
-  //   console.log(`IMPORTANT -> Google Sheets Link: ${await ClaspManager.alreadyConfiguredSheetLink("./appsscript")}`);
-  // }
 }
 
 export class UserConfigManager {
@@ -230,6 +249,8 @@ export class UserConfigManager {
     const pubSubTopic = response.pubsubTopic || DEFAULT_PUBSUB_TOPIC;
     const configureApisAndRoles = response.configureApisAndRoles;
     const useCloudBuild = response.useCloudBuild;
+    const deployUi = response.deployUi;
+    const deployBackend = response.deployBackend;
 
     const config = {
       gcpProjectId: gcpProjectIdSanitized,
@@ -238,7 +259,9 @@ export class UserConfigManager {
       pubsubTopic: pubSubTopic,
       gcsBucket: gcsBucket,
       configureApisAndRoles: configureApisAndRoles,
-      useCloudBuild: useCloudBuild
+      useCloudBuild: useCloudBuild,
+      deployUi: deployUi,
+      deployBackend: deployBackend,
     }
     this.saveConfig(config)
 

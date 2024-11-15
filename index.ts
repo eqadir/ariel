@@ -17,9 +17,9 @@
 const prompts = require("prompts");
 
 import {
-  AppsScriptDeploymentHandler,
   GcpDeploymentHandler,
   GCS_BUCKET_NAME_SUFFIX,
+  UiDeploymentHandler,
   UserConfigManager,
 } from "./common.js";
 
@@ -72,13 +72,32 @@ import {
       initial: config.useCloudBuild,
       active: "yes",
       inactive: "no",
+    },
+    {
+      type: "toggle",
+      name: "deployBackend",
+      message: "Should Ariel deploy the backend? [Y/n]",
+      initial: true,
+      active: "yes",
+      inactive: "no",
+    },
+    {
+      type: "toggle",
+      name: "deployUi",
+      message: "Should Ariel deploy the UI? [Y/n]",
+      initial: true,
+      active: "yes",
+      inactive: "no",
     }
   ]);
   UserConfigManager.setUserConfig(response);
 
-  await GcpDeploymentHandler.checkGcloudAuth();
-  GcpDeploymentHandler.deployGcpComponents();
-  await AppsScriptDeploymentHandler.createScriptProject();
-  AppsScriptDeploymentHandler.deployUi();
-  // AppsScriptDeploymentHandler.printProjectLinks();
+  if(response.deployBackend){
+    await GcpDeploymentHandler.checkGcloudAuth();
+    GcpDeploymentHandler.deployGcpComponents();
+  }
+  if(response.deployUi){
+    await UiDeploymentHandler.createScriptProject();
+    UiDeploymentHandler.deployUi();
+  }
 })();
