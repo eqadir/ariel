@@ -13,7 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Component, inject, signal, WritableSignal } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  inject,
+  signal,
+  WritableSignal,
+} from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -26,7 +32,10 @@ import {
 } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { MatCheckboxModule } from '@angular/material/checkbox';
+import {
+  MatCheckboxChange,
+  MatCheckboxModule,
+} from '@angular/material/checkbox';
 import { MatChipInputEvent, MatChipsModule } from '@angular/material/chips';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -114,7 +123,10 @@ export class AppComponent {
   gcsFolder: string = '';
   editSpeakerList = false;
 
-  constructor(private apiCalls: ApiCallsService) {}
+  constructor(
+    private apiCalls: ApiCallsService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   onFileSelected(event: Event) {
     const inputElement = event.target as HTMLInputElement;
@@ -280,17 +292,15 @@ export class AppComponent {
     this.editSpeakerList = !this.editSpeakerList;
   }
 
-  toggleElevenLabs(): void {
-    this.configFormGroup
-      .get('use_elevenlabs')
-      ?.valueChanges.subscribe(checked => {
-        if (!checked) {
-          this.configFormGroup.patchValue({
-            elevenlabs_clone_voices: false,
-            elevenlabs_remove_cloned_voices: false,
-          });
-        }
-      });
+  toggleElevenLabs(event: MatCheckboxChange): void {
+    const checked = event.checked;
+    const token = this.configFormGroup.get('elevenlabs_token');
+    if (checked) {
+      token?.setValidators(Validators.required);
+    } else {
+      token?.clearValidators();
+    }
+    token?.updateValueAndValidity();
   }
 
   existingSpeakerValidator: ValidatorFn = (
