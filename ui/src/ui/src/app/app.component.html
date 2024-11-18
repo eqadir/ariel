@@ -841,6 +841,8 @@ limitations under the License.
                               checked="{{ dubbing.adjust_speed }}"
                               id="adjust_speed-{{ i }}"
                               formControlName="adjust_speed"
+                              (change)="toggleAdjustSpeed(dubbing)"
+                              class="full-width"
                               >Adjust speed</mat-checkbox
                             >
                             @if (dubbing.adjust_speed) {

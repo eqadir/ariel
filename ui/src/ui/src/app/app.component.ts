@@ -171,7 +171,7 @@ export class AppComponent {
           key === 'for_dubbing'
         )
           continue;
-        if (key === 'speaker_id') {
+        else if (key === 'speaker_id') {
           // Case: Existing speaker with gender and voice assigned from backend.
           if (newDubbingValues[key] in this.speakers) {
             this.dubbedInstances[index]['assigned_voice'] =
@@ -192,8 +192,15 @@ export class AppComponent {
           }
           this.dubbedInstances[index]['speaker_id'] = newDubbingValues[key];
         }
-        this.dubbedInstances[index][key as keyof Dubbing] =
-          dubbings[index][key];
+        // If adjust_speed is set to true, use the new speed value else ignore.
+        else if (key === 'speed') {
+          if (newDubbingValues['adjust_speed']) {
+            this.dubbedInstances[index]['speed'] = newDubbingValues[key];
+          }
+        } else {
+          this.dubbedInstances[index][key as keyof Dubbing] =
+            dubbings[index][key];
+        }
       }
       console.log(dubbings[index]);
       console.log(this.dubbedInstances[index]);
@@ -263,6 +270,10 @@ export class AppComponent {
 
   toggleEdit(dubbing: Dubbing): void {
     dubbing.editing = !dubbing.editing;
+  }
+
+  toggleAdjustSpeed(dubbing: Dubbing): void {
+    dubbing.adjust_speed = !dubbing.adjust_speed;
   }
 
   toggleSpeakerEdit(): void {
